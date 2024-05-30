@@ -85,7 +85,7 @@ struct runsView: View {
                 manager.fetchRunningWorkoutsFirestore()
             }
         
-        }
+        }.foregroundColor(.white)
     }
 }
 

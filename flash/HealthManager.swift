@@ -303,7 +303,7 @@ class HealthManager: ObservableObject {
             self.fetchRunningWorkoutsFirestore()
             
         }
-    }
+    } 
     
     ///method to stop the periodic syncing
     func stopSync(){
