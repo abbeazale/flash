@@ -21,6 +21,14 @@ struct flashApp: App {
         WindowGroup {
             ContentView()
                 .environmentObject(manager)
+                .onAppear {
+                    // Start periodic sync when the app appears
+                    manager.startPeriodSync()
+                }
+                .onDisappear {
+                    // Stop periodic sync when the app disappears
+                    manager.stopSync()
+            }
         }
     }
 }

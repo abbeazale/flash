@@ -8,6 +8,7 @@
 import Foundation
 import HealthKit
 import CoreLocation
+import FirebaseFirestore
 
 extension Calendar {
     static let gregorian = Calendar(identifier: .iso8601)
@@ -35,6 +36,7 @@ extension Date {
 class HealthManager: ObservableObject {
     
     let healthStore = HKHealthStore()
+    let firebaseManager = FirebaseManager()
     
     //@published makes it readable for the whole file
     //tptal km for the week
@@ -50,6 +52,9 @@ class HealthManager: ObservableObject {
     
     //data points for runs
     @Published var weeklyRunSummery = [WeeklyRunData]()
+    
+    //timer for syncing new runs
+    private var syncTimer: Timer?
     
     //initalize the health manager getting the km and pace
     init(){
@@ -215,6 +220,7 @@ class HealthManager: ObservableObject {
                                                     let formattedDuration = self.formatDuration(workout.duration)
                                                     let distance = workout.totalDistance?.doubleValue(for: .meter()) ?? 0.0
                                                     let formattedPace = self.formatPace(duration: workout.duration, distance: distance)
+                                                    let formattedDurationD = self.formatDuration(workout.duration)
                                                    let runningData = RunningData(
                                                        date: workout.startDate,
                                                        distance: workout.totalDistance?.doubleValue(for: .meter()) ?? 0.0,
@@ -230,9 +236,13 @@ class HealthManager: ObservableObject {
                                                        formattedDuration: formattedDuration,
                                                        elevation: elevationGain,
                                                        activeCalories: activeCalories,
-                                                       route: route
+                                                       route: route,
+                                                       formatDuration: formattedDurationD
                                                     )
                                                     runningDataArray.append(runningData)
+                                                    
+                                                    //saves the info to firebaswe
+                                                    self.firebaseManager.saveRunningData(runningData)
                                                     group.leave()
                                                 }
                                             }
@@ -256,8 +266,51 @@ class HealthManager: ObservableObject {
 
         healthStore.execute(query)
     }
+    
+    //get the runs from the firestore database on launch
+    func fetchRunningWorkoutsFirestore(){
+        
+        firebaseManager.fetchRunningData{[weak self] runningDataArray in
+            DispatchQueue.main.async {
+                self?.allRuns = runningDataArray.sorted{$0.date>$1.date}
+            }
+        }
+    }
 
-
+    func startPeriodSync(){
+        //calls the timer function every hour
+        syncTimer = Timer.scheduledTimer(withTimeInterval: 3600, repeats: true){ [weak self] _ in
+            self?.fetchAndSyncWorkouts()
+        }
+    }
+    
+    //method to get new workouts and save it to the database
+    private func fetchAndSyncWorkouts(){
+        fetchRunningWorkouts(startDate: Date().startOfYear()){[weak self] newWorkouts in
+            guard let self = self else {return}
+            
+            //filter workouts that are already saved
+            let existingWorkoutDates = Set(self.allRuns.map {$0.date})
+            let newWorkoutsToSave = newWorkouts.filter{!existingWorkoutDates.contains($0.date)}
+            
+            //save new workouts to firebase
+            for workout in newWorkoutsToSave {
+                self.firebaseManager.saveRunningData(workout)
+                
+            }
+            
+            //refresh local data w new data
+            self.fetchRunningWorkoutsFirestore()
+            
+        }
+    }
+    
+    ///method to stop the periodic syncing
+    func stopSync(){
+        syncTimer?.invalidate()
+        syncTimer = nil
+    }
+    
     
     private func unit(for type: HKQuantityTypeIdentifier) -> HKUnit {
         switch type {
@@ -357,53 +410,6 @@ class HealthManager: ObservableObject {
         healthStore.execute(routeQuery)
     }
     
-    /*private func fetchRoute(for workout: HKWorkout, completion: @escaping ([CodableLocation]) -> Void) {
-        var locations: [CLLocation] = []
-        let routeType = HKSeriesType.workoutRoute()
-        let predicate = HKQuery.predicateForObjects(from: workout)
-        
-        let routeQuery = HKAnchoredObjectQuery(type: routeType, predicate: predicate, anchor: nil, limit: HKObjectQueryNoLimit) { query, samples, deletedObjects, newAnchor, error in
-            if let error = error {
-                print("Error fetching route: \(error.localizedDescription)")
-                completion([])
-                return
-            }
-            
-            if let routeSamples = samples as? [HKWorkoutRoute] {
-                let group = DispatchGroup()
-                
-                for routeSample in routeSamples {
-                    group.enter()
-                    let routeQuery = HKWorkoutRouteQuery(route: routeSample) { _, routeData, done, error in
-                        if let error = error {
-                            print("Error fetching route data: \(error.localizedDescription)")
-                            group.leave()
-                            return
-                        }
-                        
-                        if let routeData = routeData {
-                            locations.append(contentsOf: routeData)
-                        }
-                        
-                        if done {
-                            group.leave()
-                        }
-                    }
-                    self.healthStore.execute(routeQuery)
-                }
-                
-                group.notify(queue: .main) {
-                    // Map CLLocation to CodableLocation
-                    let codableLocations = locations.map { CodableLocation(location: $0) }
-                    completion(codableLocations)
-                }
-            } else {
-                completion([])
-            }
-        }
-        
-        healthStore.execute(routeQuery)
-    }*/
     
     //put into min:sec
     //time interval is in secondsx
@@ -416,7 +422,7 @@ class HealthManager: ObservableObject {
             return String(format: "%0d:%02d:%02d", hours, minutes, seconds)
         }
     
-    
+    ///takes time interval and distance
     private func formatPace(duration: TimeInterval, distance: Double) -> String {
         guard distance > 0 else {
             return "N/A"
@@ -431,6 +437,7 @@ class HealthManager: ObservableObject {
         return String(format: "%02d:%02d / km", minutes, seconds)
     }
     
+    ///if pace is already calculated
     private func formatPace(_ pace: Double) -> String {
         guard pace.isFinite && !pace.isNaN else {
             return "N/A"

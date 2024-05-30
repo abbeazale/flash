@@ -50,6 +50,7 @@ struct RunningData: Identifiable {
     let elevation: Double // in meters
     let activeCalories: Double // in kilocalories
     let route: [CLLocation] // Route locations
+    let formatDuration: String
    
 }
 
@@ -81,9 +82,10 @@ struct runsView: View {
                     }
                 }
             }.onAppear {
-                manager.fetchRunningWorkouts(startDate: Date().startOfYear()) { _ in }
+                manager.fetchRunningWorkoutsFirestore()
             }
         
         }
     }
 }
+

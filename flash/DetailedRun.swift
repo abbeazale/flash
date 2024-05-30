@@ -30,40 +30,51 @@ struct DetailedRun: View {
     
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(spacing: 10) {
             Text(workout.date.formatted(.dateTime
                 .day(.defaultDigits)
                 .month(.wide)
                 .weekday(.wide)))
-                .font(.headline)
-            
+                .font(Font.custom("CallingCode-Regular", size: 40))
             
            MapView(route: workout.route, region: $region)
                            .frame(height: 300) // Adjust the height as needed
-                       
             
             Text("Distance: \(workout.distance / 1000, specifier: "%.2f") km")
-                .font(.title3)
-            Text("Duration: \(workout.formattedDuration)")
-            //Text("Duration: \(workout.duration / 60, specifier: "%.2f") minutes")
-                .font(.title3)
+                .font(Font.custom("CallingCode-Regular", size: 20))
+            Text("Duration: \(workout.formatDuration)")
+                .font(Font.custom("CallingCode-Regular", size: 20))
             Text("Average Pace: \(workout.formattedPace)")
-                .font(.title3)
+                .font(Font.custom("CallingCode-Regular", size: 20))
             
             HStack{
                 VStack{
-                    Text("Calories Burned")
+                    Text("Calories")
                     Text("\(workout.activeCalories, specifier: "%.2f")")
-                }.frame(width: 100, alignment: .trailing)
+                }
+              
                 VStack{
                     Text("Heart rate")
                     Text("\(workout.heartRate, specifier: "%.2f")")
-                }.frame(width: 100, alignment: .trailing)
-            }.font(.title3)
+                }
+            }.font(Font.custom("CallingCode-Regular", size: 20))
+                //.frame(alignment: .trailing)
+            HStack{
+                VStack{
+                    Text("Cadence")
+                    Text("\(workout.cadence, specifier: "%.2f")")
+                }
+              
+                VStack{
+                    Text("Elevation")
+                    Text("\(workout.elevation, specifier: "%.2f")")
+                }
+            }.font(Font.custom("CallingCode-Regular", size: 20))
                 //.frame(alignment: .trailing)
             
             Spacer()
         }
+        .font(Font.custom("CallingCode-Regular", size: 70))
         .padding()
         .navigationTitle("Workout Details")
         .onAppear {
