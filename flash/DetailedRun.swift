@@ -73,7 +73,16 @@ struct DetailedRun: View {
                 //.frame(alignment: .trailing)
             
             Spacer()
-            
+            NavigationLink(destination: statsView(workout: workout), label: {
+                Text("advanced stats")
+                    .font(Font.custom("CallingCode-Regular", size: 20))
+                    .frame(width: 250, height: 20, alignment: .center)
+                    .foregroundColor(.white)
+                    .padding()
+                    .background(Color.gray.opacity(0.2))
+                    .cornerRadius(8)
+                
+            })
         }
         .font(Font.custom("CallingCode-Regular", size: 70))
         .padding()
