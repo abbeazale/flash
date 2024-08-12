@@ -51,28 +51,38 @@ struct DetailedRun: View {
                 VStack{
                     Text("Calories")
                     Text("\(workout.activeCalories, specifier: "%.2f")")
-                }
+                }.frame(width: 100)
               
                 VStack{
                     Text("Heart rate")
                     Text("\(workout.heartRate, specifier: "%.2f")")
-                }
+                }.frame(width: 100)
             }.font(Font.custom("CallingCode-Regular", size: 20))
                 //.frame(alignment: .trailing)
             HStack{
                 VStack{
                     Text("Cadence")
                     Text("\(workout.cadence, specifier: "%.2f")")
-                }
+                }.frame(width: 100)
               
                 VStack{
                     Text("Elevation")
                     Text("\(workout.elevation, specifier: "%.2f")")
-                }
+                }.frame(width: 100)
             }.font(Font.custom("CallingCode-Regular", size: 20))
                 //.frame(alignment: .trailing)
             
             Spacer()
+            NavigationLink(destination: statsView(workout: workout), label: {
+                Text("advanced stats")
+                    .font(Font.custom("CallingCode-Regular", size: 20))
+                    .frame(width: 250, height: 20, alignment: .center)
+                    .foregroundColor(.white)
+                    .padding()
+                    .background(Color.gray.opacity(0.2))
+                    .cornerRadius(8)
+                
+            })
         }
         .font(Font.custom("CallingCode-Regular", size: 70))
         .padding()

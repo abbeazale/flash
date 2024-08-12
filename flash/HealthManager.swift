@@ -303,7 +303,7 @@ class HealthManager: ObservableObject {
             self.fetchRunningWorkoutsFirestore()
             
         }
-    }
+    } 
     
     ///method to stop the periodic syncing
     func stopSync(){
@@ -423,7 +423,7 @@ class HealthManager: ObservableObject {
         }
     
     ///takes time interval and distance
-    private func formatPace(duration: TimeInterval, distance: Double) -> String {
+    func formatPace(duration: TimeInterval, distance: Double) -> String {
         guard distance > 0 else {
             return "N/A"
         }
@@ -438,7 +438,7 @@ class HealthManager: ObservableObject {
     }
     
     ///if pace is already calculated
-    private func formatPace(_ pace: Double) -> String {
+    func formatPace(_ pace: Double) -> String {
         guard pace.isFinite && !pace.isNaN else {
             return "N/A"
         }
