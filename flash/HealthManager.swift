@@ -221,6 +221,7 @@ class HealthManager: ObservableObject {
                                                     let distance = workout.totalDistance?.doubleValue(for: .meter()) ?? 0.0
                                                     let formattedPace = self.formatPace(duration: workout.duration, distance: distance)
                                                     let formattedDurationD = self.formatDuration(workout.duration)
+                                                    let pacePerKM = self.calculatePacePerKM(route: route, totalDuration: workout.duration)
                                                    let runningData = RunningData(
                                                        date: workout.startDate,
                                                        distance: workout.totalDistance?.doubleValue(for: .meter()) ?? 0.0,
@@ -237,7 +238,8 @@ class HealthManager: ObservableObject {
                                                        elevation: elevationGain,
                                                        activeCalories: activeCalories,
                                                        route: route,
-                                                       formatDuration: formattedDurationD
+                                                       formatDuration: formattedDurationD,
+                                                       pacePerKM: pacePerKM
                                                     )
                                                     runningDataArray.append(runningData)
                                                     
@@ -270,9 +272,9 @@ class HealthManager: ObservableObject {
     //get the runs from the firestore database on launch
     func fetchRunningWorkoutsFirestore(){
         
-        firebaseManager.fetchRunningData{[weak self] runningDataArray in
+        firebaseManager.fetchRunningData{[ self] runningDataArray in
             DispatchQueue.main.async {
-                self?.allRuns = runningDataArray.sorted{$0.date>$1.date}
+                self.allRuns = runningDataArray.sorted{$0.date>$1.date}
             }
         }
     }
@@ -330,6 +332,43 @@ class HealthManager: ObservableObject {
             return HKUnit.count()
         }
     }
+    
+    func calculatePacePerKM(route: [CLLocation], totalDuration: TimeInterval) -> [SegmentPace] {
+            guard !route.isEmpty else { return [] }
+            
+            var segmentPaces: [SegmentPace] = []
+            var currentKilometer = 1
+            var segmentDistance: Double = 0.0
+            var segmentTime: TimeInterval = 0.0
+            var lastLocation = route.first!
+            
+            for location in route.dropFirst() {
+                let distance = location.distance(from: lastLocation)
+                segmentDistance += distance
+                segmentTime += location.timestamp.timeIntervalSince(lastLocation.timestamp)
+                
+                if segmentDistance >= 1000 {
+                    let pace = segmentTime / 60.0 / (segmentDistance / 1000)
+                    let formattedPace = String(format: "%.2f", pace)
+                    let segmentPace = SegmentPace(kilometer: currentKilometer, pace: pace, formattedPace: formattedPace)
+                    segmentPaces.append(segmentPace)
+                    currentKilometer += 1
+                    segmentDistance = 0.0
+                    segmentTime = 0.0
+                }
+                
+                lastLocation = location
+            }
+            
+            if segmentDistance > 0 {
+                let pace = segmentTime / 60.0 / (segmentDistance / 1000)
+                let formattedPace = String(format: "%.2f", pace)
+                let segmentPace = SegmentPace(kilometer: currentKilometer, pace: pace, formattedPace: formattedPace)
+                segmentPaces.append(segmentPace)
+            }
+            
+            return segmentPaces
+        }
     
     private func getAverageQuantity(for workout: HKWorkout, type: HKQuantityTypeIdentifier, completion: @escaping (Double) -> Void) {
         let quantityType = HKQuantityType.quantityType(forIdentifier: type)!
