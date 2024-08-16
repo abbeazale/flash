@@ -8,13 +8,13 @@ import SwiftUI
 
 struct statsView: View {
     let workout: RunningData
-
+    
     var body: some View {
-        VStack() {
+        VStack(alignment: .leading) {
             Text("Splits")
                 .font(.system(size: 24, weight: .bold))
-                .padding(.top, 16)
-
+                .padding(.bottom, 16)
+            
             HStack {
                 Text("Km")
                     .font(.system(size: 18, weight: .bold))
@@ -24,7 +24,9 @@ struct statsView: View {
             }
             .padding(.horizontal)
             .padding(.bottom, 8)
-
+            
+            
+            //convert pace to MM:Ss
             ForEach(workout.pacePerKM, id: \.kilometer) { segment in
                 HStack {
                     Text("\(segment.kilometer)")
@@ -33,24 +35,23 @@ struct statsView: View {
                     Spacer()
                     Text(segment.formattedPace)
                         .font(.system(size: 18))
-                        .frame(width: 50, alignment: .leading)
+                        .frame(width: 50, alignment: .trailing)
                     Rectangle()
                         .fill(Color.blue)
-                        .frame(width: self.barWidth(for: segment.pace) + 10, height: 20)
+                        .frame(width: self.barWidth(for: segment.pace), height: 20)
                         .cornerRadius(4)
                 }
                 .padding(.horizontal)
             }
         }
         .padding()
+        .frame(width: 300, alignment: .center)
     }
-
+    
     private func barWidth(for pace: Double) -> CGFloat {
         let maxPace = workout.pacePerKM.map { $0.pace }.max() ?? 1
-        let minWidth: CGFloat = 20
-        let maxWidth: CGFloat = UIScreen.main.bounds.width - 100
-
-        return CGFloat((pace / maxPace) * Double(maxWidth)) + minWidth
+        let maxWidth: CGFloat = 200 // Fixed width for bars
+        
+        return CGFloat((pace / maxPace) * Double(maxWidth))
     }
 }
-

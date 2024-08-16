@@ -349,7 +349,7 @@ class HealthManager: ObservableObject {
                 
                 if segmentDistance >= 1000 {
                     let pace = segmentTime / 60.0 / (segmentDistance / 1000)
-                    let formattedPace = String(format: "%.2f", pace)
+                    let formattedPace = formatPace(pace)
                     let segmentPace = SegmentPace(kilometer: currentKilometer, pace: pace, formattedPace: formattedPace)
                     segmentPaces.append(segmentPace)
                     currentKilometer += 1
@@ -454,8 +454,7 @@ class HealthManager: ObservableObject {
     //time interval is in secondsx
     private func formatDuration(_ duration: TimeInterval) -> String {
             let hours = Int(duration) / 3600
-            print(duration)
-            print(hours)
+           
             let minutes = (Int(duration) % 3600) / 60
             let seconds = Int(duration) % 60
             return String(format: "%0d:%02d:%02d", hours, minutes, seconds)

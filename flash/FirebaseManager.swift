@@ -36,7 +36,7 @@ class FirebaseManager {
         
         // Prepare data dictionary to be saved to Firestore
         let data: [String: Any] = [
-            "id": runningData.id.uuidString,
+            "id": runningData.id,
             "date": runningData.date,
             "distance": runningData.distance,
             "cadence": runningData.cadence,
@@ -57,12 +57,26 @@ class FirebaseManager {
             
         ]
         
-        let runDocument = storage.collection("workouts").document(runningData.id.uuidString)
-        runDocument.getDocument { (document, error) in
-            if let document = document, document.exists {
-                print("Run data already exists in the database. Skipping save.")
+        //code below is to not add
+        let dateToCheck = runningData.date
+        let storage = Firestore.firestore()
+
+        // Convert the date to a range to account for runs on the same day (ignore time)
+        let startOfDay = Calendar.current.startOfDay(for: dateToCheck)
+        let endOfDay = Calendar.current.date(byAdding: .day, value: 1, to: startOfDay)!
+
+        let query = storage.collection("runs")
+            .whereField("date", isGreaterThanOrEqualTo: startOfDay)
+            .whereField("date", isLessThan: endOfDay)
+
+        query.getDocuments { (querySnapshot, error) in
+            if let error = error {
+                print("Error checking for duplicate runs: \(error.localizedDescription)")
+            } else if let documents = querySnapshot?.documents, !documents.isEmpty {
+                print("Run data for this date already exists. Skipping save.")
             } else {
-                runDocument.setData(data) { error in
+                // No duplicate found, safe to add the new run
+                storage.collection("runs").document().setData(data) { error in
                     if let error = error {
                         print("Error saving running data: \(error.localizedDescription)")
                     } else {
