@@ -283,6 +283,7 @@ class HealthManager: ObservableObject {
         //calls the timer function every hour
         syncTimer = Timer.scheduledTimer(withTimeInterval: 3600, repeats: true){ [weak self] _ in
             self?.fetchAndSyncWorkouts()
+            print("calling")
         }
     }
     
@@ -348,7 +349,7 @@ class HealthManager: ObservableObject {
                 segmentTime += location.timestamp.timeIntervalSince(lastLocation.timestamp)
                 
                 if segmentDistance >= 1000 {
-                    let pace = segmentTime / 60.0 / (segmentDistance / 1000)
+                    let pace = segmentTime / 60 / (segmentDistance / 1000)
                     let formattedPace = formatPace(pace)
                     let segmentPace = SegmentPace(kilometer: currentKilometer, pace: pace, formattedPace: formattedPace)
                     segmentPaces.append(segmentPace)
@@ -362,7 +363,7 @@ class HealthManager: ObservableObject {
             
             if segmentDistance > 0 {
                 let pace = segmentTime / 60.0 / (segmentDistance / 1000)
-                let formattedPace = String(format: "%.2f", pace)
+                let formattedPace = formatPace(pace)
                 let segmentPace = SegmentPace(kilometer: currentKilometer, pace: pace, formattedPace: formattedPace)
                 segmentPaces.append(segmentPace)
             }

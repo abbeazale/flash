@@ -36,7 +36,7 @@ class FirebaseManager {
         
         // Prepare data dictionary to be saved to Firestore
         let data: [String: Any] = [
-            "id": runningData.id,
+            "id": runningData.id.uuidString,
             "date": runningData.date,
             "distance": runningData.distance,
             "cadence": runningData.cadence,
