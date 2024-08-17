@@ -11,8 +11,7 @@ import Charts
 
 //data for the graph on the home page
 //day will be from apple health
-//kmRan will be how much km they ran that day (info from google health)
-//maxKM will be the max km ran that day (45km)
+//kmRan will be how much km they ran that day (info from apple health)
 struct WeeklyRunData: Identifiable {
     let id = UUID()
     let date: Date
@@ -77,9 +76,4 @@ extension Date {
         formatter.dateFormat = "E" // "E" gives the short form of the day of the week
         return formatter.string(from: self)
     }
-}
-
-#Preview {
-    ChartsView()
-        .environmentObject(HealthManager())
 }

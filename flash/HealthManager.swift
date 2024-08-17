@@ -39,7 +39,7 @@ class HealthManager: ObservableObject {
     let firebaseManager = FirebaseManager()
     
     //@published makes it readable for the whole file
-    //tptal km for the week
+    //total km for the week
     @Published var weeklyRunDistance: Double = 0
     @Published var weeklyRunTime: Double = 0
     @Published var weeklyRunPace: Double = 0
@@ -101,7 +101,6 @@ class HealthManager: ObservableObject {
                 //oneWeekData()
                 lottaRuns()
                 calculateWeeklySummary()
-                    
               
                 
                 //print(totalKm)
@@ -476,7 +475,7 @@ class HealthManager: ObservableObject {
         return String(format: "%02d:%02d / km", minutes, seconds)
     }
     
-    ///if pace is already calculated
+    ///formatted pace for each split
     func formatPace(_ pace: Double) -> String {
         guard pace.isFinite && !pace.isNaN else {
             return "N/A"
@@ -485,7 +484,7 @@ class HealthManager: ObservableObject {
         let totalSeconds = pace * 60 // pace in seconds per km
         let minutes = Int(totalSeconds) / 60
         let seconds = Int(totalSeconds) % 60
-        return String(format: "%0d:%02d / km", minutes, seconds)
+        return String(format: "%0d:%02d", minutes, seconds)
     }
     
     private func getStepCount(for workout: HKWorkout, completion: @escaping (Double) -> Void) {
@@ -562,7 +561,7 @@ extension HealthManager {
         }
     }
     
-    //fetches all workouts at the start so it loads at the same time
+    ///fetches all workouts at the start so it loads at the same time
     func lottaRuns() {
         fetchRunningWorkouts(startDate: Date().startOfYear()) { runningData in
             DispatchQueue.main.async {

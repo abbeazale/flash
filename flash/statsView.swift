@@ -26,7 +26,6 @@ struct statsView: View {
             .padding(.horizontal)
             .padding(.bottom, 8)
             
-            
             //convert pace to MM:Ss
             ForEach(workout.pacePerKM, id: \.kilometer) { segment in
                 HStack {
@@ -36,7 +35,7 @@ struct statsView: View {
                     Spacer()
                     Text(segment.formattedPace)
                         .font(Font.custom("CallingCode-Regular", size: 18))
-                        .frame(width: 70, alignment: .trailing)
+                        .frame(width: 70, alignment: .leading)
                     Rectangle()
                         .fill(Color.blue)
                         .frame(width: self.barWidth(for: segment.pace), height: 20)

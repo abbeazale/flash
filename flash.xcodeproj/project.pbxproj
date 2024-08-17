@@ -23,6 +23,7 @@
 		26B3DFAA2BC0FB1400B5DCB8 /* CallingCode-Regular.otf in Resources */ = {isa = PBXBuildFile; fileRef = 26B3DFA92BC0F9D400B5DCB8 /* CallingCode-Regular.otf */; };
 		26B3DFAB2BC0FB1500B5DCB8 /* CallingCode-Regular.otf in Resources */ = {isa = PBXBuildFile; fileRef = 26B3DFA92BC0F9D400B5DCB8 /* CallingCode-Regular.otf */; };
 		26B3DFAC2BC0FB4300B5DCB8 /* CallingCode-Regular.otf in Resources */ = {isa = PBXBuildFile; fileRef = 26B3DFA92BC0F9D400B5DCB8 /* CallingCode-Regular.otf */; };
+		26DB9C732C70FA3A00EC4FE1 /* models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26DB9C722C70FA3500EC4FE1 /* models.swift */; };
 		26E550B32BFE4DDC004291E0 /* MapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26E550B22BFE4DDC004291E0 /* MapView.swift */; };
 		26EA4C722C023EC0002A522C /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 26EA4C712C023EC0002A522C /* GoogleService-Info.plist */; };
 		26EA4C732C023EC0002A522C /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 26EA4C712C023EC0002A522C /* GoogleService-Info.plist */; };
@@ -73,6 +74,7 @@
 		26B3DF9C2BC08D7600B5DCB8 /* flashUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = flashUITestsLaunchTests.swift; sourceTree = "<group>"; };
 		26B3DFA92BC0F9D400B5DCB8 /* CallingCode-Regular.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "CallingCode-Regular.otf"; sourceTree = "<group>"; };
 		26B3DFAD2BC0FBB900B5DCB8 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		26DB9C722C70FA3500EC4FE1 /* models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = models.swift; sourceTree = "<group>"; };
 		26E550B22BFE4DDC004291E0 /* MapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapView.swift; sourceTree = "<group>"; };
 		26EA4C712C023EC0002A522C /* GoogleService-Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		26EA4C7F2C02B015002A522C /* FirebaseManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirebaseManager.swift; sourceTree = "<group>"; };
@@ -131,6 +133,7 @@
 		26B3DF7E2BC08D7400B5DCB8 /* flash */ = {
 			isa = PBXGroup;
 			children = (
+				26DB9C722C70FA3500EC4FE1 /* models.swift */,
 				267778A42BC8D5E70026FA5F /* flash.entitlements */,
 				26B3DFAD2BC0FBB900B5DCB8 /* Info.plist */,
 				26B3DF7F2BC08D7400B5DCB8 /* flashApp.swift */,
@@ -330,6 +333,7 @@
 			files = (
 				26B3DF822BC08D7400B5DCB8 /* ContentView.swift in Sources */,
 				26E550B32BFE4DDC004291E0 /* MapView.swift in Sources */,
+				26DB9C732C70FA3A00EC4FE1 /* models.swift in Sources */,
 				267778A32BC8D4BD0026FA5F /* GraphData.swift in Sources */,
 				26EA4C802C02B015002A522C /* FirebaseManager.swift in Sources */,
 				268D8C052C08E0C2006C2670 /* statsView.swift in Sources */,

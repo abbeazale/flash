@@ -8,14 +8,6 @@
 import SwiftUI
 
 
-struct Stats {
-    let id = UUID()
-    let totalKm: Double
-    let totalTime: String
-    let averagePace: Double
-    let formattPace: String
-
-}
 
 struct WeeklySummery: View {
     @EnvironmentObject var manager: HealthManager

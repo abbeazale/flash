@@ -8,7 +8,6 @@
 import SwiftUI
 
 struct ContentView: View {
-
     @EnvironmentObject var manager: HealthManager
     var body: some View {
         NavigationStack{
@@ -25,9 +24,7 @@ struct ContentView: View {
                         NavigationLink(destination: runsView(), label: {
                             Image(systemName: "list.bullet")
                                 .padding(.trailing, 30)
-                        })
-                       
-                        
+                        })                        
                     }
                     .opacity(0.30)
                     .padding(.top, -15)
@@ -39,8 +36,4 @@ struct ContentView: View {
                 .foregroundColor(.white)
         }
     }
-}
-
-#Preview {
-    ContentView()
 }
