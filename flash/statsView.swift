@@ -12,30 +12,31 @@ struct statsView: View {
     var body: some View {
         VStack(alignment: .leading) {
             Text("Splits")
-                .font(.system(size: 24, weight: .bold))
+                .font(Font.custom("CallingCode-Regular", size: 24))
                 .padding(.bottom, 16)
             
             HStack {
                 Text("Km")
-                    .font(.system(size: 18, weight: .bold))
+                    
                 Spacer()
                 Text("Pace")
-                    .font(.system(size: 18, weight: .bold))
+                    
             }
+            .font(Font.custom("CallingCode-Regular", size: 18))
             .padding(.horizontal)
             .padding(.bottom, 8)
             
             
             //convert pace to MM:Ss
             ForEach(workout.pacePerKM, id: \.kilometer) { segment in
-                HStack {
+                HStack(alignment: .center) {
                     Text("\(segment.kilometer)")
-                        .font(.system(size: 18))
-                        .frame(width: 30, alignment: .leading)
+                        .font(Font.custom("CallingCode-Regular", size: 18))
+                        .frame(width: 20, alignment: .leading)
                     Spacer()
                     Text(segment.formattedPace)
-                        .font(.system(size: 18))
-                        .frame(width: 50, alignment: .trailing)
+                        .font(Font.custom("CallingCode-Regular", size: 18))
+                        .frame(width: 70, alignment: .leading)
                     Rectangle()
                         .fill(Color.blue)
                         .frame(width: self.barWidth(for: segment.pace), height: 20)
@@ -44,8 +45,8 @@ struct statsView: View {
                 .padding(.horizontal)
             }
         }
-        .padding()
-        .frame(width: 300, alignment: .center)
+       
+        .frame(width: 350)
     }
     
     private func barWidth(for pace: Double) -> CGFloat {
