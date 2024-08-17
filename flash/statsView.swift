@@ -48,15 +48,16 @@ struct statsView: View {
             .font(Font.custom("CallingCode-Regular", size: 24))
             .padding(.bottom, 16)
         
-        HStack{
+        HStack(alignment: .bottom, spacing: 2){
             ForEach(elevationSegments(), id: \.self) { elevation in
                 Rectangle()
                     .fill(Color.green)
                     .frame(width: 4, height: elevationHeight(elevation))
             }
+            
         }
         .padding()
-        .frame(height: 50)
+        
         
     }
 }
@@ -72,15 +73,16 @@ extension statsView{
     
     private func elevationSegments() -> [Double] {
         let segmentCount = 60
-        let segmentLength = workout.route.count / segmentCount
+        let segmentLength = max(1,workout.route.count / segmentCount)
         var segments: [Double] = []
         
-        for i in 0..<segmentCount {
-            let segment = workout.route[i*segmentLength..<min((i+1)*segmentLength, workout.route.count)]
+        for i in stride(from: 0, to: workout.route.count, by: segmentLength) {
+            let segment = workout.route[i..<min(i+segmentLength, workout.route.count)]
             let avElevation = segment.map {$0.altitude}.average()
             segments.append(avElevation)
             
         }
+        print(segments)
         return segments
     }
     

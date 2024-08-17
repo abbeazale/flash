@@ -65,7 +65,7 @@ class FirebaseManager {
         let startOfDay = Calendar.current.startOfDay(for: dateToCheck)
         let endOfDay = Calendar.current.date(byAdding: .day, value: 1, to: startOfDay)!
 
-        let query = storage.collection("runs")
+        let query = storage.collection("collections")
             .whereField("date", isGreaterThanOrEqualTo: startOfDay)
             .whereField("date", isLessThan: endOfDay)
 
@@ -76,7 +76,7 @@ class FirebaseManager {
                 print("Run data for this date already exists. Skipping save.")
             } else {
                 // No duplicate found, safe to add the new run
-                storage.collection("runs").document().setData(data) { error in
+                storage.collection("collections").document().setData(data) { error in
                     if let error = error {
                         print("Error saving running data: \(error.localizedDescription)")
                     } else {
@@ -91,7 +91,7 @@ class FirebaseManager {
     //fetch running data from the database
     func fetchRunningData(completion: @escaping([RunningData]) -> Void){
         //get runs from the collection
-        storage.collection("workouts").getDocuments {
+        storage.collection("collections").getDocuments {
             snapshot, error in
             if let error = error {
                 print("Error fetching running data: \(error.localizedDescription)")
@@ -185,4 +185,16 @@ class FirebaseManager {
             completion(runningDataArray)
         }
     }
+}
+
+///formatted pace for each split
+func formatPace(_ pace: Double) -> String {
+    guard pace.isFinite && !pace.isNaN else {
+        return "N/A"
+    }
+
+    let totalSeconds = pace * 60 // pace in seconds per km
+    let minutes = Int(totalSeconds) / 60
+    let seconds = Int(totalSeconds) % 60
+    return String(format: "%0d:%02d", minutes, seconds)
 }

@@ -48,6 +48,7 @@ class HealthManager: ObservableObject {
     
     @Published var weeklyTimeRan = DateInterval()
     
+    ///array of all runs
     @Published var allRuns = [RunningData]()
     
     //data points for runs
@@ -98,7 +99,6 @@ class HealthManager: ObservableObject {
                             print("Authorization successful: \(success)")
                         }
                     }
-                //oneWeekData()
                 lottaRuns()
                 calculateWeeklySummary()
               
@@ -461,9 +461,10 @@ class HealthManager: ObservableObject {
         }
     
     ///takes time interval and distance
+    ///returns the pace for the whole run
     func formatPace(duration: TimeInterval, distance: Double) -> String {
         guard distance > 0 else {
-            return "N/A"
+            return "u didnt even run"
         }
 
         let pace = duration / distance // pace in seconds per meter
@@ -472,7 +473,7 @@ class HealthManager: ObservableObject {
         let minutes = Int(pacePerKm) / 60
         let seconds = Int(pacePerKm) % 60
 
-        return String(format: "%02d:%02d / km", minutes, seconds)
+        return String(format: "%02d:%02d/km", minutes, seconds)
     }
     
     ///formatted pace for each split
@@ -549,18 +550,6 @@ class HealthManager: ObservableObject {
 
 //chart data
 extension HealthManager {
-    
-    func oneWeekData(){
-        //for the graph on first page
-        fetchWeeklyInfo(startDate: Date().startOfYear()){
-            yearDistance in
-            DispatchQueue.main.async {
-                self.weeklyRunSummery = yearDistance
-      
-            }
-        }
-    }
-    
     ///fetches all workouts at the start so it loads at the same time
     func lottaRuns() {
         fetchRunningWorkouts(startDate: Date().startOfYear()) { runningData in
