@@ -29,14 +29,14 @@ struct statsView: View {
             
             //convert pace to MM:Ss
             ForEach(workout.pacePerKM, id: \.kilometer) { segment in
-                HStack(alignment: .center) {
+                HStack {
                     Text("\(segment.kilometer)")
                         .font(Font.custom("CallingCode-Regular", size: 18))
                         .frame(width: 20, alignment: .leading)
                     Spacer()
                     Text(segment.formattedPace)
                         .font(Font.custom("CallingCode-Regular", size: 18))
-                        .frame(width: 70, alignment: .leading)
+                        .frame(width: 70, alignment: .trailing)
                     Rectangle()
                         .fill(Color.blue)
                         .frame(width: self.barWidth(for: segment.pace), height: 20)
@@ -45,7 +45,7 @@ struct statsView: View {
                 .padding(.horizontal)
             }
         }
-       
+        .padding()
         .frame(width: 350)
     }
     
