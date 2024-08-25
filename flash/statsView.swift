@@ -29,14 +29,17 @@ struct statsView: View {
                     Text("\(segment.kilometer)")
                         .font(Font.custom("CallingCode-Regular", size: 18))
                         .frame(width: 20, alignment: .leading)
-                    Spacer()
+                       
+                    
                     Text(segment.formattedPace)
                         .font(Font.custom("CallingCode-Regular", size: 18))
-                        .frame(width: 70, alignment: .leading)
+                        .frame(width: 60, alignment: .leading)
+                       
                     Rectangle()
                         .fill(Color.blue)
                         .frame(width: self.barWidth(for: segment.pace), height: 20)
                         .cornerRadius(4)
+                       
                 }
                 .padding(.horizontal)
             }
@@ -48,13 +51,15 @@ struct statsView: View {
             .font(Font.custom("CallingCode-Regular", size: 24))
             .padding(.bottom, 16)
         
+        //add start elevation and end elevation
+        //add 0:00 to the start and the end time at the end at the bottom
         HStack(alignment: .bottom, spacing: 2){
             ForEach(elevationSegments(), id: \.self) { elevation in
                 Rectangle()
                     .fill(Color.green)
                     .frame(width: 4, height: elevationHeight(elevation))
+                
             }
-            
         }
         .padding()
         
