@@ -23,6 +23,7 @@
 		26B3DFAA2BC0FB1400B5DCB8 /* CallingCode-Regular.otf in Resources */ = {isa = PBXBuildFile; fileRef = 26B3DFA92BC0F9D400B5DCB8 /* CallingCode-Regular.otf */; };
 		26B3DFAB2BC0FB1500B5DCB8 /* CallingCode-Regular.otf in Resources */ = {isa = PBXBuildFile; fileRef = 26B3DFA92BC0F9D400B5DCB8 /* CallingCode-Regular.otf */; };
 		26B3DFAC2BC0FB4300B5DCB8 /* CallingCode-Regular.otf in Resources */ = {isa = PBXBuildFile; fileRef = 26B3DFA92BC0F9D400B5DCB8 /* CallingCode-Regular.otf */; };
+		26DB9C732C70FA3A00EC4FE1 /* models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26DB9C722C70FA3500EC4FE1 /* models.swift */; };
 		26E550B32BFE4DDC004291E0 /* MapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26E550B22BFE4DDC004291E0 /* MapView.swift */; };
 		26EA4C722C023EC0002A522C /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 26EA4C712C023EC0002A522C /* GoogleService-Info.plist */; };
 		26EA4C732C023EC0002A522C /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 26EA4C712C023EC0002A522C /* GoogleService-Info.plist */; };
@@ -34,6 +35,7 @@
 		26EA4C802C02B015002A522C /* FirebaseManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26EA4C7F2C02B015002A522C /* FirebaseManager.swift */; };
 		26EA4C812C02B015002A522C /* FirebaseManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26EA4C7F2C02B015002A522C /* FirebaseManager.swift */; };
 		26EA4C822C02B015002A522C /* FirebaseManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26EA4C7F2C02B015002A522C /* FirebaseManager.swift */; };
+		A4B94918AC054CDE9138C639 /* Sentry in Frameworks */ = {isa = PBXBuildFile; productRef = BBE78868AE644863AC1EA5C4 /* Sentry */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -73,6 +75,7 @@
 		26B3DF9C2BC08D7600B5DCB8 /* flashUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = flashUITestsLaunchTests.swift; sourceTree = "<group>"; };
 		26B3DFA92BC0F9D400B5DCB8 /* CallingCode-Regular.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "CallingCode-Regular.otf"; sourceTree = "<group>"; };
 		26B3DFAD2BC0FBB900B5DCB8 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		26DB9C722C70FA3500EC4FE1 /* models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = models.swift; sourceTree = "<group>"; };
 		26E550B22BFE4DDC004291E0 /* MapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapView.swift; sourceTree = "<group>"; };
 		26EA4C712C023EC0002A522C /* GoogleService-Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		26EA4C7F2C02B015002A522C /* FirebaseManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirebaseManager.swift; sourceTree = "<group>"; };
@@ -87,6 +90,7 @@
 				26EA4C7E2C024EFB002A522C /* FirebaseFirestore in Frameworks */,
 				26EA4C782C024EFB002A522C /* FirebaseAnalytics in Frameworks */,
 				26EA4C7A2C024EFB002A522C /* FirebaseAuth in Frameworks */,
+				A4B94918AC054CDE9138C639 /* Sentry in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -94,6 +98,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A4B94918AC054CDE9138C639 /* Sentry in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -101,6 +106,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A4B94918AC054CDE9138C639 /* Sentry in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -131,6 +137,7 @@
 		26B3DF7E2BC08D7400B5DCB8 /* flash */ = {
 			isa = PBXGroup;
 			children = (
+				26DB9C722C70FA3500EC4FE1 /* models.swift */,
 				267778A42BC8D5E70026FA5F /* flash.entitlements */,
 				26B3DFAD2BC0FBB900B5DCB8 /* Info.plist */,
 				26B3DF7F2BC08D7400B5DCB8 /* flashApp.swift */,
@@ -193,6 +200,7 @@
 				26B3DF782BC08D7400B5DCB8 /* Sources */,
 				26B3DF792BC08D7400B5DCB8 /* Frameworks */,
 				26B3DF7A2BC08D7400B5DCB8 /* Resources */,
+				D923061BD3F34108AE74C8F5 /* Upload Debug Symbols to Sentry */,
 			);
 			buildRules = (
 			);
@@ -204,6 +212,7 @@
 				26EA4C792C024EFB002A522C /* FirebaseAuth */,
 				26EA4C7B2C024EFB002A522C /* FirebaseDatabase */,
 				26EA4C7D2C024EFB002A522C /* FirebaseFirestore */,
+				BBE78868AE644863AC1EA5C4 /* Sentry */,
 			);
 			productName = flash;
 			productReference = 26B3DF7C2BC08D7400B5DCB8 /* flash.app */;
@@ -279,6 +288,7 @@
 			mainGroup = 26B3DF732BC08D7400B5DCB8;
 			packageReferences = (
 				26EA4C752C023F8F002A522C /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+				E340D52599F942A1998AA4F3 /* XCRemoteSwiftPackageReference "sentry-cocoa" */,
 			);
 			productRefGroup = 26B3DF7D2BC08D7400B5DCB8 /* Products */;
 			projectDirPath = "";
@@ -330,6 +340,7 @@
 			files = (
 				26B3DF822BC08D7400B5DCB8 /* ContentView.swift in Sources */,
 				26E550B32BFE4DDC004291E0 /* MapView.swift in Sources */,
+				26DB9C732C70FA3A00EC4FE1 /* models.swift in Sources */,
 				267778A32BC8D4BD0026FA5F /* GraphData.swift in Sources */,
 				26EA4C802C02B015002A522C /* FirebaseManager.swift in Sources */,
 				268D8C052C08E0C2006C2670 /* statsView.swift in Sources */,
@@ -525,6 +536,8 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_USER_SCRIPT_SANDBOXING = "NO";
 			};
 			name = Debug;
 		};
@@ -558,6 +571,8 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_USER_SCRIPT_SANDBOXING = "NO";
 			};
 			name = Release;
 		};
@@ -687,6 +702,14 @@
 				minimumVersion = 10.26.0;
 			};
 		};
+		E340D52599F942A1998AA4F3 /* XCRemoteSwiftPackageReference "sentry-cocoa" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/getsentry/sentry-cocoa/";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 8.0.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -710,7 +733,30 @@
 			package = 26EA4C752C023F8F002A522C /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseFirestore;
 		};
+		BBE78868AE644863AC1EA5C4 /* Sentry */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E340D52599F942A1998AA4F3 /* XCRemoteSwiftPackageReference "sentry-cocoa" */;
+			productName = Sentry;
+		};
 /* End XCSwiftPackageProductDependency section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		D923061BD3F34108AE74C8F5 /* Upload Debug Symbols to Sentry */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			name = "Upload Debug Symbols to Sentry";
+			inputPaths = (
+				"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}/Contents/Resources/DWARF/${TARGET_NAME}",
+			);
+			outputPaths = (
+			);
+			shellPath = /bin/sh;
+			shellScript = "# This script is responsable to upload debug symbols and source context for Sentry.\nif which sentry-cli >/dev/null; then\nexport SENTRY_ORG=dev-kettle\nexport SENTRY_PROJECT=apple-ios\nERROR=$(sentry-cli debug-files upload --include-sources \"$DWARF_DSYM_FOLDER_PATH\" 2>&1 >/dev/null)\nif [ ! $? -eq 0 ]; then\necho \"warning: sentry-cli - $ERROR\"\nfi\nelse\necho \"warning: sentry-cli not installed, download from https://github.com/getsentry/sentry-cli/releases\"\nfi\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 	};
 	rootObject = 26B3DF742BC08D7400B5DCB8 /* Project object */;
 }

@@ -8,14 +8,6 @@
 import SwiftUI
 
 
-struct Stats {
-    let id = UUID()
-    let totalKm: Double
-    let totalTime: String
-    let averagePace: Double
-    let formattPace: String
-
-}
 
 struct WeeklySummery: View {
     @EnvironmentObject var manager: HealthManager
@@ -46,11 +38,7 @@ struct WeeklySummery: View {
                     .padding(.top, 30)
                 
             }.padding(.bottom, 100)
-            
         
     }
 }
 
-//#Preview {
-    //WeeklySummery(stats: Stats(id: 0, totalKm: 52.07, totalTime: 6300.36, averagePace: 300.26))
-//}

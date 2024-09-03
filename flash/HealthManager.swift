@@ -39,7 +39,7 @@ class HealthManager: ObservableObject {
     let firebaseManager = FirebaseManager()
     
     //@published makes it readable for the whole file
-    //tptal km for the week
+    //total km for the week
     @Published var weeklyRunDistance: Double = 0
     @Published var weeklyRunTime: Double = 0
     @Published var weeklyRunPace: Double = 0
@@ -48,6 +48,7 @@ class HealthManager: ObservableObject {
     
     @Published var weeklyTimeRan = DateInterval()
     
+    ///array of all runs
     @Published var allRuns = [RunningData]()
     
     //data points for runs
@@ -98,10 +99,8 @@ class HealthManager: ObservableObject {
                             print("Authorization successful: \(success)")
                         }
                     }
-                //oneWeekData()
                 lottaRuns()
                 calculateWeeklySummary()
-                    
               
                 
                 //print(totalKm)
@@ -221,6 +220,7 @@ class HealthManager: ObservableObject {
                                                     let distance = workout.totalDistance?.doubleValue(for: .meter()) ?? 0.0
                                                     let formattedPace = self.formatPace(duration: workout.duration, distance: distance)
                                                     let formattedDurationD = self.formatDuration(workout.duration)
+                                                    let pacePerKM = self.calculatePacePerKM(route: route, totalDuration: workout.duration)
                                                    let runningData = RunningData(
                                                        date: workout.startDate,
                                                        distance: workout.totalDistance?.doubleValue(for: .meter()) ?? 0.0,
@@ -237,7 +237,8 @@ class HealthManager: ObservableObject {
                                                        elevation: elevationGain,
                                                        activeCalories: activeCalories,
                                                        route: route,
-                                                       formatDuration: formattedDurationD
+                                                       formatDuration: formattedDurationD,
+                                                       pacePerKM: pacePerKM
                                                     )
                                                     runningDataArray.append(runningData)
                                                     
@@ -270,9 +271,9 @@ class HealthManager: ObservableObject {
     //get the runs from the firestore database on launch
     func fetchRunningWorkoutsFirestore(){
         
-        firebaseManager.fetchRunningData{[weak self] runningDataArray in
+        firebaseManager.fetchRunningData{[ self] runningDataArray in
             DispatchQueue.main.async {
-                self?.allRuns = runningDataArray.sorted{$0.date>$1.date}
+                self.allRuns = runningDataArray.sorted{$0.date>$1.date}
             }
         }
     }
@@ -281,6 +282,7 @@ class HealthManager: ObservableObject {
         //calls the timer function every hour
         syncTimer = Timer.scheduledTimer(withTimeInterval: 3600, repeats: true){ [weak self] _ in
             self?.fetchAndSyncWorkouts()
+            print("calling")
         }
     }
     
@@ -330,6 +332,43 @@ class HealthManager: ObservableObject {
             return HKUnit.count()
         }
     }
+    
+    func calculatePacePerKM(route: [CLLocation], totalDuration: TimeInterval) -> [SegmentPace] {
+            guard !route.isEmpty else { return [] }
+            
+            var segmentPaces: [SegmentPace] = []
+            var currentKilometer = 1
+            var segmentDistance: Double = 0.0
+            var segmentTime: TimeInterval = 0.0
+            var lastLocation = route.first!
+            
+            for location in route.dropFirst() {
+                let distance = location.distance(from: lastLocation)
+                segmentDistance += distance
+                segmentTime += location.timestamp.timeIntervalSince(lastLocation.timestamp)
+                
+                if segmentDistance >= 1000 {
+                    let pace = segmentTime / 60 / (segmentDistance / 1000)
+                    let formattedPace = formatPace(pace)
+                    let segmentPace = SegmentPace(kilometer: currentKilometer, pace: pace, formattedPace: formattedPace)
+                    segmentPaces.append(segmentPace)
+                    currentKilometer += 1
+                    segmentDistance = 0.0
+                    segmentTime = 0.0
+                }
+                
+                lastLocation = location
+            }
+            
+            if segmentDistance > 0 {
+                let pace = segmentTime / 60.0 / (segmentDistance / 1000)
+                let formattedPace = formatPace(pace)
+                let segmentPace = SegmentPace(kilometer: currentKilometer, pace: pace, formattedPace: formattedPace)
+                segmentPaces.append(segmentPace)
+            }
+            
+            return segmentPaces
+        }
     
     private func getAverageQuantity(for workout: HKWorkout, type: HKQuantityTypeIdentifier, completion: @escaping (Double) -> Void) {
         let quantityType = HKQuantityType.quantityType(forIdentifier: type)!
@@ -415,17 +454,17 @@ class HealthManager: ObservableObject {
     //time interval is in secondsx
     private func formatDuration(_ duration: TimeInterval) -> String {
             let hours = Int(duration) / 3600
-            print(duration)
-            print(hours)
+           
             let minutes = (Int(duration) % 3600) / 60
             let seconds = Int(duration) % 60
             return String(format: "%0d:%02d:%02d", hours, minutes, seconds)
         }
     
     ///takes time interval and distance
+    ///returns the pace for the whole run
     func formatPace(duration: TimeInterval, distance: Double) -> String {
         guard distance > 0 else {
-            return "N/A"
+            return "u didnt even run"
         }
 
         let pace = duration / distance // pace in seconds per meter
@@ -434,10 +473,10 @@ class HealthManager: ObservableObject {
         let minutes = Int(pacePerKm) / 60
         let seconds = Int(pacePerKm) % 60
 
-        return String(format: "%02d:%02d / km", minutes, seconds)
+        return String(format: "%02d:%02d/km", minutes, seconds)
     }
     
-    ///if pace is already calculated
+    ///formatted pace for each split
     func formatPace(_ pace: Double) -> String {
         guard pace.isFinite && !pace.isNaN else {
             return "N/A"
@@ -446,7 +485,7 @@ class HealthManager: ObservableObject {
         let totalSeconds = pace * 60 // pace in seconds per km
         let minutes = Int(totalSeconds) / 60
         let seconds = Int(totalSeconds) % 60
-        return String(format: "%0d:%02d / km", minutes, seconds)
+        return String(format: "%0d:%02d", minutes, seconds)
     }
     
     private func getStepCount(for workout: HKWorkout, completion: @escaping (Double) -> Void) {
@@ -511,19 +550,7 @@ class HealthManager: ObservableObject {
 
 //chart data
 extension HealthManager {
-    
-    func oneWeekData(){
-        //for the graph on first page
-        fetchWeeklyInfo(startDate: Date().startOfYear()){
-            yearDistance in
-            DispatchQueue.main.async {
-                self.weeklyRunSummery = yearDistance
-      
-            }
-        }
-    }
-    
-    //fetches all workouts at the start so it loads at the same time
+    ///fetches all workouts at the start so it loads at the same time
     func lottaRuns() {
         fetchRunningWorkouts(startDate: Date().startOfYear()) { runningData in
             DispatchQueue.main.async {

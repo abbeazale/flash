@@ -26,6 +26,13 @@ class FirebaseManager {
             ]
             routeData.append(locationData)
         }
+        let pacePerKMData: [[String: Any]] = runningData.pacePerKM.map { segment in
+                    [
+                        "kilometer": segment.kilometer,
+                        "pace": segment.pace,
+                        "formattedPace": segment.formattedPace
+                    ]
+                }
         
         // Prepare data dictionary to be saved to Firestore
         let data: [String: Any] = [
@@ -44,14 +51,38 @@ class FirebaseManager {
             "formattedDuration": runningData.formattedDuration,
             "elevation": runningData.elevation,
             "activeCalories": runningData.activeCalories,
-            "route": routeData
+            "route": routeData,
+            "pacePerKM": pacePerKMData,
+            "formatDuration": runningData.formattedDuration
+            
         ]
         
-        storage.collection("runs").document(runningData.id.uuidString).setData(data) { error in
+        //code below is to not add
+        let dateToCheck = runningData.date
+        let storage = Firestore.firestore()
+
+        // Convert the date to a range to account for runs on the same day (ignore time)
+        let startOfDay = Calendar.current.startOfDay(for: dateToCheck)
+        let endOfDay = Calendar.current.date(byAdding: .day, value: 1, to: startOfDay)!
+
+        let query = storage.collection("collections")
+            .whereField("date", isGreaterThanOrEqualTo: startOfDay)
+            .whereField("date", isLessThan: endOfDay)
+
+        query.getDocuments { (querySnapshot, error) in
             if let error = error {
-                print("Error saving running data: \(error.localizedDescription)")
+                print("Error checking for duplicate runs: \(error.localizedDescription)")
+            } else if let documents = querySnapshot?.documents, !documents.isEmpty {
+                print("Run data for this date already exists. Skipping save.")
             } else {
-                print("Running data successfully saved!")
+                // No duplicate found, safe to add the new run
+                storage.collection("collections").document().setData(data) { error in
+                    if let error = error {
+                        print("Error saving running data: \(error.localizedDescription)")
+                    } else {
+                        print("Running data successfully saved!")
+                    }
+                }
             }
         }
     }
@@ -60,7 +91,7 @@ class FirebaseManager {
     //fetch running data from the database
     func fetchRunningData(completion: @escaping([RunningData]) -> Void){
         //get runs from the collection
-        storage.collection("runs").getDocuments {
+        storage.collection("collections").getDocuments {
             snapshot, error in
             if let error = error {
                 print("Error fetching running data: \(error.localizedDescription)")
@@ -96,7 +127,9 @@ class FirebaseManager {
                       let elevation = data["elevation"] as? Double,
                       let activeCalories = data["activeCalories"] as? Double,
                       let routeData = data["route"] as? [[String: Double]],
-                      let formatDuration = data["formatDuration"] as? String else {
+                      let formatDuration = data["formatDuration"] as? String,
+                      let pacePerKMData = data["pacePerKM"] as? [[String: Any]]
+                else {
                     continue
                 }
                 
@@ -111,6 +144,15 @@ class FirebaseManager {
                       let location = CLLocation(coordinate: coordinate, altitude: altitude, horizontalAccuracy: kCLLocationAccuracyBest, verticalAccuracy: kCLLocationAccuracyBest, timestamp: Date())
                       route.append(location)
                   }
+                }
+                
+                let pacePerKM: [SegmentPace] = pacePerKMData.compactMap { segmentData in
+                    guard let kilometer = segmentData["kilometer"] as? Int,
+                          let pace = segmentData["pace"] as? Double,
+                          let formattedPace = segmentData["formattedPace"] as? String else {
+                        return nil
+                    }
+                    return SegmentPace(kilometer: kilometer, pace: pace, formattedPace: formattedPace)
                 }
                 // Create RunningData object from Firestore document data
                 let runningData = RunningData(
@@ -130,7 +172,10 @@ class FirebaseManager {
                     elevation: elevation,
                     activeCalories: activeCalories,
                     route: route,
-                    formatDuration: formatDuration
+                    formatDuration: formatDuration,
+                    pacePerKM: pacePerKM
+                   
+                   
                 )
                 
                 // Append the created RunningData object to the array
@@ -140,4 +185,16 @@ class FirebaseManager {
             completion(runningDataArray)
         }
     }
+}
+
+///formatted pace for each split
+func formatPace(_ pace: Double) -> String {
+    guard pace.isFinite && !pace.isNaN else {
+        return "N/A"
+    }
+
+    let totalSeconds = pace * 60 // pace in seconds per km
+    let minutes = Int(totalSeconds) / 60
+    let seconds = Int(totalSeconds) % 60
+    return String(format: "%0d:%02d", minutes, seconds)
 }
