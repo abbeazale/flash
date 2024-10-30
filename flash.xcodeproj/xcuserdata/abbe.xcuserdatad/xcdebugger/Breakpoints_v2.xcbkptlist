@@ -14,25 +14,9 @@
             filePath = "flash/HealthManager.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "152"
-            endingLineNumber = "152"
-            landmarkName = "fetchWorkouts()"
-            landmarkType = "7">
-         </BreakpointContent>
-      </BreakpointProxy>
-      <BreakpointProxy
-         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
-         <BreakpointContent
-            uuid = "45BC27B8-1E08-425F-8B68-3EA3BE0A83D0"
-            shouldBeEnabled = "Yes"
-            ignoreCount = "0"
-            continueAfterRunningActions = "No"
-            filePath = "flash/HealthManager.swift"
-            startingColumnNumber = "9223372036854775807"
-            endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "277"
-            endingLineNumber = "277"
-            landmarkName = "fetchRunningWorkoutsFirestore()"
+            startingLineNumber = "158"
+            endingLineNumber = "158"
+            landmarkName = "fetchRunningWorkouts(startDate:)"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>

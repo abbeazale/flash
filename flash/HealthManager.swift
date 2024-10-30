@@ -45,9 +45,8 @@ class HealthManager: ObservableObject {
     @Published var weeklyRunPace: Double = 0
     @Published var formattedRunTime: String = ""
     @Published var formattedRunPace: String = ""
-    
     @Published var weeklyTimeRan = DateInterval()
-    
+    @Published var isLoading = true
     ///array of all runs
     @Published var allRuns = [RunningData]()
     
@@ -58,60 +57,66 @@ class HealthManager: ObservableObject {
     private var syncTimer: Timer?
     
     //initalize the health manager getting the km and pace
-    init(){
-        //gets total km the usuer has ran or walked
-        let totalKm = HKQuantityType(.distanceWalkingRunning)
-        let workouts = HKQuantityType.workoutType()
-        let heartRate = HKQuantityType(.heartRate)
-        let type = HKObjectType.activitySummaryType()
-        let runs = HKSampleType.workoutType()
-        
-        //pace
-        let pace = HKQuantityType(.runningSpeed)
-        
-        //what its asking for permission from user
-        let healthTypes: Set = [totalKm, pace, workouts, heartRate, type, runs]
-        let readTypes: Set = [
-                HKObjectType.workoutType(),
-                HKObjectType.quantityType(forIdentifier: .runningPower)!,
-                HKObjectType.quantityType(forIdentifier: .runningSpeed)!,
-                HKObjectType.quantityType(forIdentifier: .heartRate)!,
-                HKObjectType.quantityType(forIdentifier: .runningStrideLength)!,
-                HKObjectType.quantityType(forIdentifier: .runningVerticalOscillation)!,
-                HKObjectType.quantityType(forIdentifier: .runningGroundContactTime)!,
-                HKObjectType.quantityType(forIdentifier: .stepCount)!,
-                HKSeriesType.workoutRoute(),
-                HKObjectType.quantityType(forIdentifier: .heartRate)!,
-                HKObjectType.quantityType(forIdentifier: .distanceWalkingRunning)!,
-                HKObjectType.quantityType(forIdentifier: .activeEnergyBurned)!
-                
-            ]
-        
-        //getting the health data
-        Task {
-            do {
-                //reading the health types
-                try await healthStore.requestAuthorization(toShare: [], read: healthTypes)
-                await healthStore.requestAuthorization(toShare: nil, read: readTypes) { success, error in
-                        if let error = error {
-                            print("Error requesting authorization: \(error.localizedDescription)")
-                        } else {
-                            print("Authorization successful: \(success)")
-                        }
-                    }
-                lottaRuns()
-                calculateWeeklySummary()
-              
-                
-                //print(totalKm)
-            } catch {
-                print("error getting health data ")
+    init() {
+            Task {
+                await requestAuthorization()
+                await loadAllData()
             }
+        }
+    
+    private func requestAuthorization() async {
+        let healthTypes: Set = [
+            HKQuantityType(.distanceWalkingRunning),
+            HKQuantityType(.runningSpeed),
+            HKQuantityType.workoutType(),
+            HKQuantityType(.heartRate),
+            HKObjectType.activitySummaryType(),
+            HKSampleType.workoutType()
+        ]
+        let readTypes: Set = [
+            HKObjectType.workoutType(),
+            HKObjectType.quantityType(forIdentifier: .runningPower)!,
+            HKObjectType.quantityType(forIdentifier: .runningSpeed)!,
+            HKObjectType.quantityType(forIdentifier: .heartRate)!,
+            HKObjectType.quantityType(forIdentifier: .runningStrideLength)!,
+            HKObjectType.quantityType(forIdentifier: .runningVerticalOscillation)!,
+            HKObjectType.quantityType(forIdentifier: .runningGroundContactTime)!,
+            HKObjectType.quantityType(forIdentifier: .stepCount)!,
+            HKSeriesType.workoutRoute(),
+            HKObjectType.quantityType(forIdentifier: .distanceWalkingRunning)!,
+            HKObjectType.quantityType(forIdentifier: .activeEnergyBurned)!
+        ]
+        
+        do {
+            try await healthStore.requestAuthorization(toShare: [], read: healthTypes)
+            let success = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Bool, Error>) in
+                healthStore.requestAuthorization(toShare: nil, read: readTypes) { success, error in
+                    if let error = error {
+                        continuation.resume(throwing: error)
+                    } else {
+                        continuation.resume(returning: success)
+                    }
+                }
+            }
+            print("Authorization successful: \(success)")
+        } catch {
+            print("Error requesting authorization: \(error.localizedDescription)")
+        }
+    }
+    
+    private func loadAllData() async {
+        await withTaskGroup(of: Void.self) { group in
+            group.addTask { await self.fetchRunningWorkoutsFirestore() }
+            group.addTask { await self.calculateWeeklySummary() }
+        }
+        
+        DispatchQueue.main.async {
+            self.isLoading = false
         }
     }
    
     //data is fetched asynchronously
-    //gets an array of dates
+    //gets the data ran for the week 
     func fetchWeeklyInfo(startDate: Date, completion: @escaping ([WeeklyRunData]) -> Void ) {
         let distance = HKQuantityType(.distanceWalkingRunning)
         //puts the two querys of within the last month and running
@@ -132,7 +137,8 @@ class HealthManager: ObservableObject {
                                                 statistics.sumQuantity()?.doubleValue(for: .meterUnit(with: .kilo)) ?? 0.00))
             }
             completion(totalD)
-            //print(totalD.map {$0.kmRan})
+           
+            //total distance
             let td = totalD.map {$0.kmRan}
             
             let sum = td.reduce(0, { x, y in
@@ -149,163 +155,134 @@ class HealthManager: ObservableObject {
         healthStore.execute(query)
     }
     
-    func fetchWorkouts() {
-        let timePredicate = HKQuery.predicateForSamples(withStart: Date().startOfMonth(), end: Date())
-        let workout = HKSampleType.workoutType()
-        //searches only for this running type
-        let workoutPredicate = HKQuery.predicateForWorkouts(with: .running)
-        //puts the two querys of within the last month and running
-        let predicate = NSCompoundPredicate(andPredicateWithSubpredicates: [timePredicate, workoutPredicate])
-        
-        //returns an array of HK samples (running workouts)
-        let query = HKSampleQuery(sampleType: workout, predicate: predicate, limit: 10, sortDescriptors: nil){_, sample, error in
-            
-            guard let workouts = sample as? [HKWorkout], error == nil else {
-                print("error getting the info for the week ")
-                return
-            }
-    
-        }
-        
-        healthStore.execute(query)
-    }
-    
-    func fetchRunningWorkouts(startDate: Date, completion: @escaping ([RunningData]) -> Void) {
+    func fetchRunningWorkouts(startDate: Date) async -> [RunningData] {
         let workoutType = HKSampleType.workoutType()
         let timePredicate = HKQuery.predicateForSamples(withStart: startDate, end: Date())
         let workoutPredicate = HKQuery.predicateForWorkouts(with: .running)
         let predicate = NSCompoundPredicate(andPredicateWithSubpredicates: [timePredicate, workoutPredicate])
 
-        let query = HKSampleQuery(sampleType: workoutType, predicate: predicate, limit: 0, sortDescriptors: nil) { _, samples, error in
-            if let error = error {
-                print("Error fetching workouts: \(error.localizedDescription)")
-                completion([])
-                return
+        let workouts = try? await withCheckedThrowingContinuation { (continuation: CheckedContinuation<[HKWorkout], Error>) in
+            let query = HKSampleQuery(sampleType: workoutType, predicate: predicate, limit: 0, sortDescriptors: nil) { _, samples, error in
+                if let error = error {
+                    continuation.resume(throwing: error)
+                } else if let workouts = samples as? [HKWorkout], !workouts.isEmpty {
+                    continuation.resume(returning: workouts)
+                } else {
+                    continuation.resume(returning: [])
+                }
             }
+            healthStore.execute(query)
+        }
 
-            guard let workouts = samples as? [HKWorkout], !workouts.isEmpty else {
-                print("No workouts found")
-                completion([])
-                return
-            }
+        guard let workouts = workouts, !workouts.isEmpty else {
+            print("No workouts found")
+            return []
+        }
 
-            var runningDataArray: [RunningData] = []
-            let group = DispatchGroup()
-
+        let runningDataArray = await withTaskGroup(of: RunningData?.self) { group in
             for workout in workouts {
-                group.enter()
-                self.getStepCount(for: workout) { stepCount in
-                    let totalTimeMinutes = workout.duration / 60
-                    let cadence = stepCount / totalTimeMinutes
-
-                    var elevationGain: Double = 0.0
-                    if let elevationQuantity = workout.metadata?[HKMetadataKeyElevationAscended] as? HKQuantity {
-                        elevationGain = elevationQuantity.doubleValue(for: HKUnit.meter())
-                    }
-
-                    self.getAverageQuantity(for: workout, type: .runningPower) { power in
-                        self.getAverageQuantity(for: workout, type: .runningSpeed) { pace in
-                            self.getAverageQuantity(for: workout, type: .heartRate) { heartRate in
-                                self.getAverageQuantity(for: workout, type: .runningStrideLength) { strideLength in
-                                    self.getAverageQuantity(for: workout, type: .runningVerticalOscillation) { verticalOscillation in
-                                        self.getAverageQuantity(for: workout, type: .runningGroundContactTime) { groundContactTime in
-                                            
-                                            // Fetch active calories
-                                            self.fetchActiveCalories(for: workout) { activeCalories in
-                                                
-                                                // Fetch route data
-                                                self.fetchRoute(for: workout) { route in
-                                                    
-                                                    let formattedDuration = self.formatDuration(workout.duration)
-                                                    let distance = workout.totalDistance?.doubleValue(for: .meter()) ?? 0.0
-                                                    let formattedPace = self.formatPace(duration: workout.duration, distance: distance)
-                                                    let formattedDurationD = self.formatDuration(workout.duration)
-                                                    let pacePerKM = self.calculatePacePerKM(route: route, totalDuration: workout.duration)
-                                                   let runningData = RunningData(
-                                                       date: workout.startDate,
-                                                       distance: workout.totalDistance?.doubleValue(for: .meter()) ?? 0.0,
-                                                       cadence: cadence,
-                                                       power: power,
-                                                       pace: workout.duration / distance, // This is the raw pace value in minutes per kilometer
-                                                       formattedPace: formattedPace, // This is the formatted pace value
-                                                       heartRate: heartRate,
-                                                       strideLength: strideLength,
-                                                       verticalOscillation: verticalOscillation,
-                                                       groundContactTime: groundContactTime,
-                                                       duration: workout.duration,
-                                                       formattedDuration: formattedDuration,
-                                                       elevation: elevationGain,
-                                                       activeCalories: activeCalories,
-                                                       route: route,
-                                                       formatDuration: formattedDurationD,
-                                                       pacePerKM: pacePerKM
-                                                    )
-                                                    runningDataArray.append(runningData)
-                                                    
-                                                    //saves the info to firebaswe
-                                                    self.firebaseManager.saveRunningData(runningData)
-                                                    group.leave()
-                                                }
-                                            }
-                                        }
-                                    }
-                                    
-                                }
-                            }
-                        }
-                    }
+                group.addTask {
+                    await self.processWorkout(workout)
                 }
             }
 
-            group.notify(queue: .main) {
-                runningDataArray.sort { $0.date > $1.date }
-                //print(runningDataArray.map { $0.date })
-                self.allRuns = runningDataArray
-                completion(runningDataArray)
+            var results: [RunningData] = []
+            for await result in group {
+                if let runningData = result {
+                    results.append(runningData)
+                    await self.firebaseManager.saveRunningData(runningData)
+                }
             }
+            return results.sorted { $0.date > $1.date }
         }
 
-        healthStore.execute(query)
+        await MainActor.run {
+            self.allRuns = runningDataArray
+        }
+
+        return runningDataArray
+    }
+
+    private func processWorkout(_ workout: HKWorkout) async -> RunningData? {
+        let stepCount = await getStepCount(for: workout)
+        let totalTimeMinutes = workout.duration / 60
+        let cadence = stepCount / totalTimeMinutes
+
+        var elevationGain: Double = 0.0
+        if let elevationQuantity = workout.metadata?[HKMetadataKeyElevationAscended] as? HKQuantity {
+            elevationGain = elevationQuantity.doubleValue(for: HKUnit.meter())
+        }
+
+        let power = await getAverageQuantity(for: workout, type: .runningPower)
+        let pace = await getAverageQuantity(for: workout, type: .runningSpeed)
+        let heartRate = await getAverageQuantity(for: workout, type: .heartRate)
+        let strideLength = await getAverageQuantity(for: workout, type: .runningStrideLength)
+        let verticalOscillation = await getAverageQuantity(for: workout, type: .runningVerticalOscillation)
+        let groundContactTime = await getAverageQuantity(for: workout, type: .runningGroundContactTime)
+        let activeCalories = await fetchActiveCalories(for: workout)
+        let route = await fetchRoute(for: workout)
+
+        let formattedDuration = formatDuration(workout.duration)
+        let distance = workout.totalDistance?.doubleValue(for: .meter()) ?? 0.0
+        let formattedPace = formatPace(duration: workout.duration, distance: distance)
+        let formattedDurationD = formatDuration(workout.duration)
+        let pacePerKM = calculatePacePerKM(route: route, totalDuration: workout.duration)
+
+        return RunningData(
+            date: workout.startDate,
+            distance: distance,
+            cadence: cadence,
+            power: power,
+            pace: pace,
+            formattedPace: formattedPace,
+            heartRate: heartRate,
+            strideLength: strideLength,
+            verticalOscillation: verticalOscillation,
+            groundContactTime: groundContactTime,
+            duration: workout.duration,
+            formattedDuration: formattedDuration,
+            elevation: elevationGain,
+            activeCalories: activeCalories,
+            route: route,
+            formatDuration: formattedDurationD,
+            pacePerKM: pacePerKM
+        )
     }
     
     //get the runs from the firestore database on launch
-    func fetchRunningWorkoutsFirestore(){
-        
-        firebaseManager.fetchRunningData{[ self] runningDataArray in
-            DispatchQueue.main.async {
-                self.allRuns = runningDataArray.sorted{$0.date>$1.date}
-            }
+    func fetchRunningWorkoutsFirestore() async {
+        let runningDataArray = await firebaseManager.fetchRunningData()
+        DispatchQueue.main.async {
+            self.allRuns = runningDataArray.sorted { $0.date > $1.date }
         }
     }
 
-    func startPeriodSync(){
-        //calls the timer function every hour
-        syncTimer = Timer.scheduledTimer(withTimeInterval: 3600, repeats: true){ [weak self] _ in
-            self?.fetchAndSyncWorkouts()
-            print("calling")
+    func startPeriodSync() {
+        // Calls the timer function every hour
+        syncTimer = Timer.scheduledTimer(withTimeInterval: 3600, repeats: true) { [weak self] _ in
+            guard let self = self else { return }
+            Task {
+                await self.fetchAndSyncWorkouts()
+            }
         }
     }
     
     //method to get new workouts and save it to the database
-    private func fetchAndSyncWorkouts(){
-        fetchRunningWorkouts(startDate: Date().startOfYear()){[weak self] newWorkouts in
-            guard let self = self else {return}
-            
-            //filter workouts that are already saved
-            let existingWorkoutDates = Set(self.allRuns.map {$0.date})
-            let newWorkoutsToSave = newWorkouts.filter{!existingWorkoutDates.contains($0.date)}
-            
-            //save new workouts to firebase
-            for workout in newWorkoutsToSave {
-                self.firebaseManager.saveRunningData(workout)
-                
-            }
-            
-            //refresh local data w new data
-            self.fetchRunningWorkoutsFirestore()
-            
+    private func fetchAndSyncWorkouts() async {
+        let newWorkouts = await fetchRunningWorkouts(startDate: Date().startOfYear())
+        
+        // Filter workouts that are already saved
+        let existingWorkoutDates = Set(allRuns.map { $0.date })
+        let newWorkoutsToSave = newWorkouts.filter { !existingWorkoutDates.contains($0.date) }
+        
+        // Save new workouts to Firebase
+        for workout in newWorkoutsToSave {
+            await firebaseManager.saveRunningData(workout)
         }
-    } 
+        
+        // Refresh local data with new data
+        await fetchRunningWorkoutsFirestore()
+    }
     
     ///method to stop the periodic syncing
     func stopSync(){
@@ -370,83 +347,89 @@ class HealthManager: ObservableObject {
             return segmentPaces
         }
     
-    private func getAverageQuantity(for workout: HKWorkout, type: HKQuantityTypeIdentifier, completion: @escaping (Double) -> Void) {
+    private func getAverageQuantity(for workout: HKWorkout, type: HKQuantityTypeIdentifier) async -> Double {
         let quantityType = HKQuantityType.quantityType(forIdentifier: type)!
         let predicate = HKQuery.predicateForObjects(from: workout)
-
-        let query = HKStatisticsQuery(quantityType: quantityType, quantitySamplePredicate: predicate, options: .discreteAverage) { _, result, _ in
-            guard let result = result, let averageQuantity = result.averageQuantity() else {
-                completion(0.0)
-                return
+        
+        return await withCheckedContinuation { continuation in
+            let query = HKStatisticsQuery(quantityType: quantityType, quantitySamplePredicate: predicate, options: .discreteAverage) { _, result, _ in
+                guard let result = result, let averageQuantity = result.averageQuantity() else {
+                    continuation.resume(returning: 0.0)
+                    return
+                }
+                var averageValue = averageQuantity.doubleValue(for: self.unit(for: type))
+                
+                // Convert speed from m/s to min/km
+                if type == .runningSpeed {
+                    averageValue = (1 / averageValue) * 16.6667 // 1 m/s = 16.6667 min/km
+                }
+                
+                continuation.resume(returning: averageValue)
             }
-            var averageValue = averageQuantity.doubleValue(for: self.unit(for: type))
             
-            // Convert speed from m/s to min/km
-            if type == .runningSpeed {
-                averageValue = (1 / averageValue) * 16.6667 // 1 m/s = 16.6667 min/km
-            }
-            
-            completion(averageValue)
+            healthStore.execute(query)
         }
-
-        healthStore.execute(query)
     }
     
-    private func fetchActiveCalories(for workout: HKWorkout, completion: @escaping (Double) -> Void) {
+    private func fetchActiveCalories(for workout: HKWorkout) async -> Double {
         let energyType = HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned)!
         let predicate = HKQuery.predicateForSamples(withStart: workout.startDate, end: workout.endDate, options: .strictStartDate)
         
-        let query = HKStatisticsQuery(quantityType: energyType, quantitySamplePredicate: predicate, options: .cumulativeSum) { _, result, _ in
-            let activeCalories = result?.sumQuantity()?.doubleValue(for: .kilocalorie()) ?? 0.0
-            completion(activeCalories)
+        return await withCheckedContinuation { continuation in
+            let query = HKStatisticsQuery(quantityType: energyType, quantitySamplePredicate: predicate, options: .cumulativeSum) { _, result, _ in
+                let activeCalories = result?.sumQuantity()?.doubleValue(for: .kilocalorie()) ?? 0.0
+                continuation.resume(returning: activeCalories)
+            }
+            healthStore.execute(query)
         }
-        healthStore.execute(query)
     }
     
-    private func fetchRoute(for workout: HKWorkout, completion: @escaping ([CLLocation]) -> Void) {
+    private func fetchRoute(for workout: HKWorkout) async -> ([CLLocation]) {
         var locations: [CLLocation] = []
         let routeType = HKSeriesType.workoutRoute()
         let predicate = HKQuery.predicateForObjects(from: workout)
         
-        let routeQuery = HKAnchoredObjectQuery(type: routeType, predicate: predicate, anchor: nil, limit: HKObjectQueryNoLimit) { query, samples, deletedObjects, newAnchor, error in
-            if let error = error {
-                print("Error fetching route: \(error.localizedDescription)")
-                completion([])
-                return
+        return await withCheckedContinuation { continuation in
+            let routeQuery = HKAnchoredObjectQuery(type: routeType, predicate: predicate, anchor: nil, limit: HKObjectQueryNoLimit) { query, samples, deletedObjects, newAnchor, error in
+                if let error = error {
+                    print("Error fetching route: \(error.localizedDescription)")
+                    continuation.resume(returning: [])
+                    return
+                }
+                
+                if let routeSamples = samples as? [HKWorkoutRoute] {
+                    let group = DispatchGroup()
+                    
+                    for routeSample in routeSamples {
+                        group.enter()
+                        let routeQuery = HKWorkoutRouteQuery(route: routeSample) { _, routeData, done, error in
+                            if let error = error {
+                                print("Error fetching route data: \(error.localizedDescription)")
+                                group.leave()
+                                return
+                            }
+                            
+                            if let routeData = routeData {
+                                locations.append(contentsOf: routeData)
+                            }
+                            
+                            if done {
+                                group.leave()
+                            }
+                        }
+                        self.healthStore.execute(routeQuery)
+                    }
+                    
+                    group.notify(queue: .main) {
+                        continuation.resume(returning: locations)
+                    }
+                } else {
+                    continuation.resume(returning: [])
+                }
             }
             
-            if let routeSamples = samples as? [HKWorkoutRoute] {
-                let group = DispatchGroup()
-                
-                for routeSample in routeSamples {
-                    group.enter()
-                    let routeQuery = HKWorkoutRouteQuery(route: routeSample) { _, routeData, done, error in
-                        if let error = error {
-                            print("Error fetching route data: \(error.localizedDescription)")
-                            group.leave()
-                            return
-                        }
-                        
-                        if let routeData = routeData {
-                            locations.append(contentsOf: routeData)
-                        }
-                        
-                        if done {
-                            group.leave()
-                        }
-                    }
-                    self.healthStore.execute(routeQuery)
-                }
-                
-                group.notify(queue: .main) {
-                    completion(locations)
-                }
-            } else {
-                completion([])
-            }
+            healthStore.execute(routeQuery)
         }
-        
-        healthStore.execute(routeQuery)
     }
     
     
@@ -488,75 +471,73 @@ class HealthManager: ObservableObject {
         return String(format: "%0d:%02d", minutes, seconds)
     }
     
-    private func getStepCount(for workout: HKWorkout, completion: @escaping (Double) -> Void) {
-        // Define the quantity type for step count and filter for step count from the workouts
+    private func getStepCount(for workout: HKWorkout) async -> Double {
         let quantityType = HKQuantityType.quantityType(forIdentifier: .stepCount)!
         let predicate = HKQuery.predicateForObjects(from: workout)
         
-        // Create a statistics query to sum the step count samples
-        let query = HKStatisticsQuery(quantityType: quantityType, quantitySamplePredicate: predicate, options: .cumulativeSum) { _, result, _ in
-            // Check if the result is valid and contains a sum quantity
-            guard let result = result, let sumQuantity = result.sumQuantity() else {
-                // If no data is found, return 0.0
-                completion(0.0)
-                return
+        return await withCheckedContinuation { continuation in
+            let query = HKStatisticsQuery(quantityType: quantityType, quantitySamplePredicate: predicate, options: .cumulativeSum) { _, result, error in
+                if let error = error {
+                    print("Error fetching step count: \(error.localizedDescription)")
+                    continuation.resume(returning: 0.0)
+                    return
+                }
+                
+                guard let result = result, let sumQuantity = result.sumQuantity() else {
+                    continuation.resume(returning: 0.0)
+                    return
+                }
+                
+                let stepCount = sumQuantity.doubleValue(for: HKUnit.count())
+                continuation.resume(returning: stepCount)
             }
-            let stepCount = sumQuantity.doubleValue(for: HKUnit.count())
             
-            // Return the step count value through the completion handler
-            completion(stepCount)
+            healthStore.execute(query)
         }
-        
-        // Execute the query
-        healthStore.execute(query)
     }
     
-    func calculateWeeklySummary() {
-            let startDate = Date().startOfWeek()
-            
-            fetchRunningWorkouts(startDate: startDate) { runningDataArray in
-                // Filter workouts to include only those from the current week
-                let calendar = Calendar.current
-                let currentWeekWorkouts = runningDataArray.filter { calendar.isDate($0.date, equalTo: startDate, toGranularity: .weekOfYear) }
-                
-                // Calculate total distance, total duration, and average pace
-                let totalDistance = currentWeekWorkouts.reduce(0.0) { $0 + $1.distance } / 1000 // Convert to kilometers
-                let totalDuration = currentWeekWorkouts.reduce(0.0) { $0 + $1.duration } / 60 // Convert to minutes
-                let averagePace = totalDuration > 0 ? totalDuration / totalDistance : 0.0 // min/km
-                
-                let runTimeFormatted = self.formatDuration(currentWeekWorkouts.reduce(0.0) { $0 + $1.duration })
-                let runPaceFormatted = self.formatPace(averagePace)
-                
-                
-                // Create WeeklyRunData for each day in the current week
-                let weeklyRunData = currentWeekWorkouts.map { workout in
-                    WeeklyRunData(date: workout.date, kmRan: (workout.distance / 1000).rounded(toPlaces: 2))
-                }
-                
-                // Update @Published properties
-                DispatchQueue.main.async {
-                    self.weeklyRunDistance = totalDistance.rounded(toPlaces: 2)
-                    self.weeklyRunTime = totalDuration.rounded(toPlaces: 2)
-                    self.weeklyRunPace = averagePace.rounded(toPlaces: 2)
-                    self.weeklyRunSummery = weeklyRunData
-                    self.formattedRunTime = runTimeFormatted
-                    self.formattedRunPace = runPaceFormatted
-                    
-                }
-            }
+    func calculateWeeklySummary() async {
+        let startDate = Date().startOfWeek()
+        
+        let runningDataArray = await fetchRunningWorkouts(startDate: startDate)
+        
+        // Filter workouts to include only those from the current week
+        let calendar = Calendar.current
+        let currentWeekWorkouts = runningDataArray.filter { calendar.isDate($0.date, equalTo: startDate, toGranularity: .weekOfYear) }
+        
+        // Calculate total distance, total duration, and average pace
+        let totalDistance = currentWeekWorkouts.reduce(0.0) { $0 + $1.distance } / 1000 // Convert to kilometers
+        let totalDuration = currentWeekWorkouts.reduce(0.0) { $0 + $1.duration } / 60 // Convert to minutes
+        let averagePace = totalDuration > 0 ? totalDuration / totalDistance : 0.0 // min/km
+        
+        let runTimeFormatted = self.formatDuration(currentWeekWorkouts.reduce(0.0) { $0 + $1.duration })
+        let runPaceFormatted = self.formatPace(averagePace)
+        
+        // Create WeeklyRunData for each day in the current week
+        let weeklyRunData = currentWeekWorkouts.map { workout in
+            WeeklyRunData(date: workout.date, kmRan: (workout.distance / 1000).rounded(toPlaces: 2))
         }
+        
+        // Update @Published properties
+        await MainActor.run {
+            self.weeklyRunDistance = totalDistance.rounded(toPlaces: 2)
+            self.weeklyRunTime = totalDuration.rounded(toPlaces: 2)
+            self.weeklyRunPace = averagePace.rounded(toPlaces: 2)
+            self.weeklyRunSummery = weeklyRunData
+            self.formattedRunTime = runTimeFormatted
+            self.formattedRunPace = runPaceFormatted
+        }
+    }
 }
 
 
 //chart data
 extension HealthManager {
     ///fetches all workouts at the start so it loads at the same time
-    func lottaRuns() {
-        fetchRunningWorkouts(startDate: Date().startOfYear()) { runningData in
-            DispatchQueue.main.async {
-                self.allRuns = runningData
-    
-            }
+    func lottaRuns() async {
+        let runningData = await fetchRunningWorkouts(startDate: Date().startOfYear())
+        await MainActor.run {
+            self.allRuns = runningData
         }
     }
 }
