@@ -385,7 +385,6 @@ class HealthManager: ObservableObject {
     }
     
     private func fetchRoute(for workout: HKWorkout) async -> ([CLLocation]) {
-        var locations: [CLLocation] = []
         let routeType = HKSeriesType.workoutRoute()
         let predicate = HKQuery.predicateForObjects(from: workout)
         
@@ -399,6 +398,9 @@ class HealthManager: ObservableObject {
                 
                 if let routeSamples = samples as? [HKWorkoutRoute] {
                     let group = DispatchGroup()
+                    // Create a thread-safe array using actor or serial queue
+                    let serialQueue = DispatchQueue(label: "com.app.locations")
+                    var threadSafeLocations: [CLLocation] = []
                     
                     for routeSample in routeSamples {
                         group.enter()
@@ -410,7 +412,10 @@ class HealthManager: ObservableObject {
                             }
                             
                             if let routeData = routeData {
-                                locations.append(contentsOf: routeData)
+                                // Safely append to the array using serial queue
+                                serialQueue.sync {
+                                    threadSafeLocations.append(contentsOf: routeData)
+                                }
                             }
                             
                             if done {
@@ -421,7 +426,7 @@ class HealthManager: ObservableObject {
                     }
                     
                     group.notify(queue: .main) {
-                        continuation.resume(returning: locations)
+                        continuation.resume(returning: threadSafeLocations)
                     }
                 } else {
                     continuation.resume(returning: [])
@@ -533,6 +538,7 @@ class HealthManager: ObservableObject {
 
 //chart data
 extension HealthManager {
+    
     ///fetches all workouts at the start so it loads at the same time
     func lottaRuns() async {
         let runningData = await fetchRunningWorkouts(startDate: Date().startOfYear())
