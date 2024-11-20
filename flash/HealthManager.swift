@@ -106,7 +106,22 @@ class HealthManager: ObservableObject {
     
     private func loadAllData() async {
         await withTaskGroup(of: Void.self) { group in
-            group.addTask { await self.fetchRunningWorkoutsFirestore() }
+            // Replace fetchRunningWorkoutsFirestore with direct HealthKit fetch
+            group.addTask {
+                let runningDataArray = await self.fetchRunningWorkouts(startDate: Date().startOfYear())
+                
+                // Update UI immediately with HealthKit data
+                await MainActor.run {
+                    self.allRuns = runningDataArray.sorted { $0.date > $1.date }
+                }
+                
+                // Save to Firebase in background for backup/sync
+                Task {
+                    for runData in runningDataArray {
+                        await self.firebaseManager.saveRunningData(runData)
+                    }
+                }
+            }
             group.addTask { await self.calculateWeeklySummary() }
         }
         
