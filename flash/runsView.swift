@@ -36,8 +36,8 @@ struct runsView: View {
                         }
                     }
                 }
-            }.onAppear {
-                manager.fetchRunningWorkouts(startDate: Date().startOfYear()) { _ in }
+            }.task {
+                await manager.lottaRuns()
             }
         
         }.foregroundColor(.white)

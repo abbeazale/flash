@@ -20,20 +20,43 @@ struct MapView: UIViewRepresentable {
     }
     
     func updateUIView(_ uiView: MKMapView, context: Context) {
-        uiView.setRegion(region, animated: true)
-        updateRoute(uiView)
-    }
+            // Remove overlays
+            uiView.removeOverlays(uiView.overlays)
+            
+            // Update the route
+            updateRoute(uiView)
+            
+            // Set the region only if it has changed significantly
+            if shouldUpdateRegion(currentRegion: uiView.region, newRegion: region) {
+                uiView.setRegion(region, animated: true)
+            }
+        }
     
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
     }
     
     private func updateRoute(_ mapView: MKMapView) {
+        guard !route.isEmpty else { return }
+        
         let coordinates = route.map { $0.coordinate }
         let polyline = MKPolyline(coordinates: coordinates, count: coordinates.count)
         mapView.addOverlay(polyline)
+        
+       
+        let rect = polyline.boundingMapRect
+        mapView.setVisibleMapRect(rect, edgePadding: UIEdgeInsets(top: 50, left: 50, bottom: 50, right: 50), animated: true)
     }
     
+    private func shouldUpdateRegion(currentRegion: MKCoordinateRegion, newRegion: MKCoordinateRegion) -> Bool {
+        let latDiff = abs(currentRegion.center.latitude - newRegion.center.latitude)
+        let lonDiff = abs(currentRegion.center.longitude - newRegion.center.longitude)
+        let spanLatDiff = abs(currentRegion.span.latitudeDelta - newRegion.span.latitudeDelta)
+        let spanLonDiff = abs(currentRegion.span.longitudeDelta - newRegion.span.longitudeDelta)
+        
+        return latDiff > 0.001 || lonDiff > 0.001 || spanLatDiff > 0.005 || spanLonDiff > 0.005
+    }
+
     
     
     class Coordinator: NSObject, MKMapViewDelegate {
