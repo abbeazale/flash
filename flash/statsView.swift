@@ -10,59 +10,71 @@ struct statsView: View {
     let workout: RunningData
     
     var body: some View {
-        VStack(alignment: .leading) {
-            Text("Splits")
-                .font(Font.custom("CallingCode-Regular", size: 24))
-                .padding(.bottom, 16)
-            HStack {
-                Text("Km")
-                
-                Spacer()
-                Text("Pace")
-            }
-            .font(Font.custom("CallingCode-Regular", size: 18))
-            .padding(.horizontal)
-            .padding(.bottom, 8)
-            
-            ForEach(workout.pacePerKM, id: \.kilometer) { segment in
+        ScrollView {
+            VStack(alignment: .leading) {
+                Text("Splits")
+                    .font(Font.custom("CallingCode-Regular", size: 24))
+                    .padding(.bottom, 16)
                 HStack {
-                    Text("\(segment.kilometer)")
-                        .font(Font.custom("CallingCode-Regular", size: 18))
-                        .frame(width: 20, alignment: .leading)
-                       
+                    Text("Km")
                     
-                    Text(segment.formattedPace)
-                        .font(Font.custom("CallingCode-Regular", size: 18))
-                        .frame(width: 60, alignment: .leading)
-                       
-                    Rectangle()
-                        .fill(Color.blue)
-                        .frame(width: self.barWidth(for: segment.pace), height: 20)
-                        .cornerRadius(4)
-                       
+                    Spacer()
+                    Text("Pace")
                 }
+                .font(Font.custom("CallingCode-Regular", size: 18))
                 .padding(.horizontal)
-            }
-        }
-        .padding()
-        .frame(width: 350)
-        
-        Text("Elevation")
-            .font(Font.custom("CallingCode-Regular", size: 24))
-            .padding(.bottom, 16)
-        
-        //add start elevation and end elevation
-        //add 0:00 to the start and the end time at the end at the bottom
-        HStack(alignment: .bottom, spacing: 2){
-            ForEach(elevationSegments(), id: \.self) { elevation in
-                Rectangle()
-                    .fill(Color.green)
-                    .frame(width: 4, height: elevationHeight(elevation))
+                .padding(.bottom, 8)
                 
+                ForEach(workout.pacePerKM, id: \.kilometer) { segment in
+                    HStack {
+                        Text("\(segment.kilometer)")
+                            .font(Font.custom("CallingCode-Regular", size: 18))
+                            .frame(width: 20, alignment: .leading)
+                        
+                        
+                        Text(segment.formattedPace)
+                            .font(Font.custom("CallingCode-Regular", size: 18))
+                            .frame(width: 60, alignment: .leading)
+                        
+                        Rectangle()
+                            .fill(Color.blue)
+                            .frame(width: self.barWidth(for: segment.pace), height: 20)
+                            .cornerRadius(4)
+                        
+                    }
+                    .padding(.horizontal)
+                }
+            }
+            .padding()
+            .frame(width: 350)
+            
+            VStack(alignment: .leading){
+                Text("Elevation")
+                    .font(Font.custom("CallingCode-Regular", size: 24))
+                    .padding(.bottom, 16)
+                
+                HStack(alignment: .bottom, spacing: 2){
+                    ForEach(elevationSegments(), id: \.self) { elevation in
+                        Rectangle()
+                            .fill(Color.green)
+                            .frame(width: 4, height: elevationHeight(elevation))
+                    }
+                }
+                .padding()
+                // Time labels
+                HStack {
+                    Text("0:00")
+                        .font(Font.custom("CallingCode-Regular", size: 18))
+                    
+                    Spacer()
+                    
+                    Text(workout.formattedDuration)
+                        .font(Font.custom("CallingCode-Regular", size: 18))
+                }
+                .padding(.leading)
+                .padding(.trailing)
             }
         }
-        .padding()
-        
     }
 }
 
