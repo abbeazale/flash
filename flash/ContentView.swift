@@ -21,8 +21,10 @@ struct ContentView: View {
                 } else {
                     VStack {
                         HStack {
-                            Image(systemName: "gearshape")
-                                .padding(.leading, 30)
+                            NavigationLink(destination: detailsView(), label: {
+                                Image(systemName: "gearshape")
+                                    .padding(.leading, 30)
+                            })
                             Spacer()
                             Text("swipe to start a run")
                             Spacer()
@@ -34,8 +36,16 @@ struct ContentView: View {
                         .opacity(0.30)
                         .padding(.top, -10)
                         
-                        WeeklySummery(stats: Stats(totalKm: manager.weeklyRunDistance, totalTime: manager.formattedRunTime, averagePace: manager.weeklyRunPace, formattPace: manager.formattedRunPace))
+                        WeeklySummery(stats: Stats(
+                            totalKm: manager.weeklyRunDistance,
+                            totalTime: manager.formattedRunTime,
+                            averagePace: manager.weeklyRunPace,
+                            formattPace: manager.formattedRunPace
+                        ))
+                        
                         ChartsView()
+                        
+                       
                     }
                 }
             }

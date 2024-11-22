@@ -34,6 +34,7 @@ struct WeeklySummery: View {
                         .padding(.top, 3)
                     Text("average pace")
                         .frame(maxWidth: 300, alignment: .leading)
+                    
                 }.font(Font.custom("CallingCode-Regular", size: 18))
                     .padding(.top, 30)
                 

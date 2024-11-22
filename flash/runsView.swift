@@ -12,35 +12,39 @@ import HealthKit
 struct runsView: View {
     @EnvironmentObject var manager: HealthManager
     var body: some View {
-        VStack{
-            Text("runs")
-                .font(Font.custom("CallingCode-Regular", size: 70))
-            //scroll view to scroll through workouts but keep the run at the top
-            ScrollView(.vertical){
-                VStack{
-                    //put array is desending order
-                    ForEach(manager.allRuns) { workout in
-                NavigationLink(destination: DetailedRun(workout: workout)) {
-                            HStack {
-                                Text(workout.date.formatted(.dateTime
-                                    .day(.defaultDigits)
-                                    .month(.wide)
-                                    .weekday(.wide)))
+        ZStack{
+            Color(red: 54 / 255, green: 46 / 255, blue: 64/255)
+                .ignoresSafeArea()
+            VStack{
+                Text("runs")
+                    .font(Font.custom("CallingCode-Regular", size: 70))
+                //scroll view to scroll through workouts but keep the run at the top
+                ScrollView(.vertical){
+                    VStack{
+                        //put array is desending order
+                        ForEach(manager.allRuns) { workout in
+                            NavigationLink(destination: DetailedRun(workout: workout)) {
+                                HStack {
+                                    Text(workout.date.formatted(.dateTime
+                                        .day(.defaultDigits)
+                                        .month(.wide)
+                                        .weekday(.wide)))
                                     .font(.headline)
-                                Text("\(workout.distance / 1000, specifier: "%.2f") km")
-                                    .font(.subheadline)
+                                    Text("\(workout.distance / 1000, specifier: "%.2f") km")
+                                        .font(.subheadline)
+                                }
+                                .padding()
+                                .background(Color.gray.opacity(0.2))
+                                .cornerRadius(8)
                             }
-                            .padding()
-                            .background(Color.gray.opacity(0.2))
-                            .cornerRadius(8)
                         }
                     }
+                }.task {
+                    await manager.lottaRuns()
                 }
-            }.task {
-                await manager.lottaRuns()
-            }
-        
-        }.foregroundColor(.white)
+                
+            }.foregroundColor(.white)
+        }
     }
 }
 

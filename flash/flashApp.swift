@@ -29,6 +29,16 @@ struct flashApp: App {
         }
         // Remove the next line after confirming that your Sentry integration is working.
         SentrySDK.capture(message: "This app uses Sentry! :)")
+        
+        let appearance = UINavigationBarAppearance()
+                appearance.configureWithTransparentBackground()
+                appearance.shadowColor = .clear // Removes the shadow (white line)
+                //appearance.backgroundColor = UIColor.clear // Makes the background transparent
+                appearance.backgroundColor = UIColor(red: 54/255, green: 46/255, blue: 64/255, alpha: 1)
+                appearance.shadowColor =  .clear
+
+                UINavigationBar.appearance().standardAppearance = appearance
+                UINavigationBar.appearance().scrollEdgeAppearance = appearance
     }
     @StateObject var manager = HealthManager()
     
