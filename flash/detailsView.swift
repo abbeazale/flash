@@ -8,6 +8,7 @@
 import SwiftUI
 
 struct detailsView: View {
+    @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var manager: HealthManager
     @State private var showingLongestRuns = false
     @State private var showingFastestRuns = false
@@ -120,6 +121,21 @@ struct detailsView: View {
                 )
             }
         }
+        .navigationBarTitleDisplayMode(.inline)
+            .navigationBarBackButtonHidden(true)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(action: {
+                        dismiss()
+                    }) {
+                        Image(systemName: "arrowshape.left.fill")
+                            .padding(.leading, 30)
+                    }
+                }
+            }
+            .toolbarBackground(Color(red: 54 / 255, green: 46 / 255, blue: 64 / 255), for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
     }
     
     // Helper function to format duration
