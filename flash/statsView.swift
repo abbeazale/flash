@@ -46,11 +46,12 @@ struct statsView: View {
                 }
             }
             .padding()
-            .frame(width: 350)
+            .frame(width: 400)
             
             VStack(alignment: .leading){
                 Text("Elevation")
                     .font(Font.custom("CallingCode-Regular", size: 24))
+                    .padding(.horizontal)
                     .padding(.bottom, 16)
                 
                 HStack(alignment: .bottom, spacing: 2){
@@ -60,7 +61,8 @@ struct statsView: View {
                             .frame(width: 4, height: elevationHeight(elevation))
                     }
                 }
-                .padding()
+                .padding(.horizontal)
+                
                 // Time labels
                 HStack {
                     Text("0:00")
@@ -74,6 +76,7 @@ struct statsView: View {
                 .padding(.leading)
                 .padding(.trailing)
             }
+            .frame(width: 400)
         }
     }
 }

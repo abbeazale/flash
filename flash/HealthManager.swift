@@ -56,6 +56,10 @@ class HealthManager: ObservableObject {
     //timer for syncing new runs
     private var syncTimer: Timer?
     
+    // Add new property to track if we're loading more data
+    @Published var isLoadingMore = false
+    private let initialLoadLimit = 20
+    
     //initalize the health manager getting the km and pace
     init() {
             Task {
@@ -106,30 +110,48 @@ class HealthManager: ObservableObject {
     
     private func loadAllData() async {
         await withTaskGroup(of: Void.self) { group in
-            // Replace fetchRunningWorkoutsFirestore with direct HealthKit fetch
+            // First load only initial batch
             group.addTask {
-                let runningDataArray = await self.fetchRunningWorkouts(startDate: Date().startOfYear())
+                let initialData = await self.fetchRunningWorkouts(
+                    startDate: Date().startOfYear(),
+                    limit: self.initialLoadLimit
+                )
                 
-                // Update UI immediately with HealthKit data
                 await MainActor.run {
-                    self.allRuns = runningDataArray.sorted { $0.date > $1.date }
+                    self.allRuns = initialData.sorted { $0.date > $1.date }
+                    self.isLoading = false // Stop loading indicator after initial load
                 }
                 
-                // Save to Firebase in background for backup/sync
-                Task {
-                    for runData in runningDataArray {
-                        await self.firebaseManager.saveRunningData(runData)
-                    }
-                }
+                // Then load the rest
+                await self.loadRemainingData()
             }
             group.addTask { await self.calculateWeeklySummary() }
         }
+    }
+    
+    private func loadRemainingData() async {
+        await MainActor.run {
+            self.isLoadingMore = true
+        }
         
-        DispatchQueue.main.async {
-            self.isLoading = false
+        let allData = await fetchRunningWorkouts(
+            startDate: Date().startOfYear(),
+            limit: 0 // 0 means no limit
+        )
+        
+        await MainActor.run {
+            self.allRuns = allData.sorted { $0.date > $1.date }
+            self.isLoadingMore = false
+        }
+        
+        // Save to Firebase in background
+        Task {
+            for runData in allData {
+                await self.firebaseManager.saveRunningData(runData)
+            }
         }
     }
-   
+    
     //data is fetched asynchronously
     //gets the data ran for the week 
     func fetchWeeklyInfo(startDate: Date, completion: @escaping ([WeeklyRunData]) -> Void ) {
@@ -170,14 +192,19 @@ class HealthManager: ObservableObject {
         healthStore.execute(query)
     }
     
-    func fetchRunningWorkouts(startDate: Date) async -> [RunningData] {
+    func fetchRunningWorkouts(startDate: Date, limit: Int = 0) async -> [RunningData] {
         let workoutType = HKSampleType.workoutType()
         let timePredicate = HKQuery.predicateForSamples(withStart: startDate, end: Date())
         let workoutPredicate = HKQuery.predicateForWorkouts(with: .running)
         let predicate = NSCompoundPredicate(andPredicateWithSubpredicates: [timePredicate, workoutPredicate])
 
         let workouts = try? await withCheckedThrowingContinuation { (continuation: CheckedContinuation<[HKWorkout], Error>) in
-            let query = HKSampleQuery(sampleType: workoutType, predicate: predicate, limit: 0, sortDescriptors: nil) { _, samples, error in
+            let query = HKSampleQuery(
+                sampleType: workoutType,
+                predicate: predicate,
+                limit: limit, // Use the limit parameter
+                sortDescriptors: [NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: false)]
+            ) { _, samples, error in
                 if let error = error {
                     continuation.resume(throwing: error)
                 } else if let workouts = samples as? [HKWorkout], !workouts.isEmpty {
@@ -205,14 +232,9 @@ class HealthManager: ObservableObject {
             for await result in group {
                 if let runningData = result {
                     results.append(runningData)
-                    await self.firebaseManager.saveRunningData(runningData)
                 }
             }
             return results.sorted { $0.date > $1.date }
-        }
-
-        await MainActor.run {
-            self.allRuns = runningDataArray
         }
 
         return runningDataArray
