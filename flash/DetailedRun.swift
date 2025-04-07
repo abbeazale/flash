@@ -31,6 +31,8 @@ struct DetailedRun: View {
 
     var body: some View {
         VStack(spacing: 10) {
+            Text("Workout Details")
+                .font(Font.custom("CallingCode-Regular", size: 30))
             Text(workout.date.formatted(.dateTime
                 .day(.defaultDigits)
                 .month(.wide)
@@ -86,7 +88,7 @@ struct DetailedRun: View {
         }
         .font(Font.custom("CallingCode-Regular", size: 70))
         .padding()
-        .navigationTitle("Workout Details")
+        //.navigationTitle("Workout Details")
         .onAppear {
             setRegionToFitRoute()
         }
