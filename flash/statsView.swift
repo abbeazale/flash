@@ -78,6 +78,8 @@ struct statsView: View {
             }
             .frame(width: 400)
         }
+        .toolbarBackground(Color.black, for: .navigationBar)
+        .toolbarColorScheme(.dark, for: .navigationBar)
     }
 }
 

@@ -34,13 +34,15 @@ struct CodableLocation: Codable {
     }
 }
 
-struct SegmentPace {
+// Hashable required for use with NavigationLink(value:)
+struct SegmentPace: Hashable {
     let kilometer: Int
     let pace: Double
     let formattedPace: String
 }
 
-struct RunningData: Identifiable {
+// Hashable required for use with NavigationLink(value:)
+struct RunningData: Identifiable, Hashable {
     let id = UUID()
     let date: Date
     let distance: Double // in meters
@@ -70,3 +72,4 @@ struct Stats {
     let formattPace: String
 
 }
+

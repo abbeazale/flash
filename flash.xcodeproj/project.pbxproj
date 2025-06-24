@@ -7,6 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		266793FD2E0A41BE00E7CCB8 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 266793FC2E0A41BE00E7CCB8 /* GoogleService-Info.plist */; };
+		266793FE2E0A41BE00E7CCB8 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 266793FC2E0A41BE00E7CCB8 /* GoogleService-Info.plist */; };
+		266793FF2E0A41BE00E7CCB8 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 266793FC2E0A41BE00E7CCB8 /* GoogleService-Info.plist */; };
+		266794032E0A761D00E7CCB8 /* RunsListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 266794022E0A761D00E7CCB8 /* RunsListView.swift */; };
 		267778A32BC8D4BD0026FA5F /* GraphData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 267778A22BC8D4BD0026FA5F /* GraphData.swift */; };
 		267778A62BC8D76B0026FA5F /* HealthManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 267778A52BC8D76B0026FA5F /* HealthManager.swift */; };
 		267778AA2BC9D6C50026FA5F /* WeeklySummery.swift in Sources */ = {isa = PBXBuildFile; fileRef = 267778A92BC9D6C50026FA5F /* WeeklySummery.swift */; };
@@ -28,9 +32,6 @@
 		26B3DFAC2BC0FB4300B5DCB8 /* CallingCode-Regular.otf in Resources */ = {isa = PBXBuildFile; fileRef = 26B3DFA92BC0F9D400B5DCB8 /* CallingCode-Regular.otf */; };
 		26DB9C732C70FA3A00EC4FE1 /* models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26DB9C722C70FA3500EC4FE1 /* models.swift */; };
 		26E550B32BFE4DDC004291E0 /* MapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26E550B22BFE4DDC004291E0 /* MapView.swift */; };
-		26EA4C722C023EC0002A522C /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 26EA4C712C023EC0002A522C /* GoogleService-Info.plist */; };
-		26EA4C732C023EC0002A522C /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 26EA4C712C023EC0002A522C /* GoogleService-Info.plist */; };
-		26EA4C742C023EC0002A522C /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 26EA4C712C023EC0002A522C /* GoogleService-Info.plist */; };
 		26EA4C782C024EFB002A522C /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = 26EA4C772C024EFB002A522C /* FirebaseAnalytics */; };
 		26EA4C7A2C024EFB002A522C /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 26EA4C792C024EFB002A522C /* FirebaseAuth */; };
 		26EA4C7C2C024EFB002A522C /* FirebaseDatabase in Frameworks */ = {isa = PBXBuildFile; productRef = 26EA4C7B2C024EFB002A522C /* FirebaseDatabase */; };
@@ -59,6 +60,8 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		266793FC2E0A41BE00E7CCB8 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
+		266794022E0A761D00E7CCB8 /* RunsListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunsListView.swift; sourceTree = "<group>"; };
 		267778A22BC8D4BD0026FA5F /* GraphData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GraphData.swift; sourceTree = "<group>"; };
 		267778A42BC8D5E70026FA5F /* flash.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = flash.entitlements; sourceTree = "<group>"; };
 		267778A52BC8D76B0026FA5F /* HealthManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthManager.swift; sourceTree = "<group>"; };
@@ -81,7 +84,6 @@
 		26B3DFAD2BC0FBB900B5DCB8 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		26DB9C722C70FA3500EC4FE1 /* models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = models.swift; sourceTree = "<group>"; };
 		26E550B22BFE4DDC004291E0 /* MapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapView.swift; sourceTree = "<group>"; };
-		26EA4C712C023EC0002A522C /* GoogleService-Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		26EA4C7F2C02B015002A522C /* FirebaseManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirebaseManager.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -151,14 +153,15 @@
 				26B3DF852BC08D7600B5DCB8 /* Preview Content */,
 				267778A22BC8D4BD0026FA5F /* GraphData.swift */,
 				267778A52BC8D76B0026FA5F /* HealthManager.swift */,
+				266793FC2E0A41BE00E7CCB8 /* GoogleService-Info.plist */,
 				267778A92BC9D6C50026FA5F /* WeeklySummery.swift */,
-				26EA4C712C023EC0002A522C /* GoogleService-Info.plist */,
 				267778AB2BCF4B5C0026FA5F /* runsView.swift */,
 				26890F632BF885D400275777 /* DetailedRun.swift */,
 				26E550B22BFE4DDC004291E0 /* MapView.swift */,
 				26EA4C7F2C02B015002A522C /* FirebaseManager.swift */,
 				268D8C042C08E0C2006C2670 /* statsView.swift */,
 				26A59C652CF063AA00A88DC1 /* detailsView.swift */,
+				266794022E0A761D00E7CCB8 /* RunsListView.swift */,
 			);
 			path = flash;
 			sourceTree = "<group>";
@@ -312,7 +315,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				26B3DF872BC08D7600B5DCB8 /* Preview Assets.xcassets in Resources */,
-				26EA4C722C023EC0002A522C /* GoogleService-Info.plist in Resources */,
+				266793FE2E0A41BE00E7CCB8 /* GoogleService-Info.plist in Resources */,
 				26B3DFAA2BC0FB1400B5DCB8 /* CallingCode-Regular.otf in Resources */,
 				26B3DF842BC08D7600B5DCB8 /* Assets.xcassets in Resources */,
 			);
@@ -323,7 +326,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				26B3DFAB2BC0FB1500B5DCB8 /* CallingCode-Regular.otf in Resources */,
-				26EA4C732C023EC0002A522C /* GoogleService-Info.plist in Resources */,
+				266793FD2E0A41BE00E7CCB8 /* GoogleService-Info.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -332,7 +335,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				26B3DFAC2BC0FB4300B5DCB8 /* CallingCode-Regular.otf in Resources */,
-				26EA4C742C023EC0002A522C /* GoogleService-Info.plist in Resources */,
+				266793FF2E0A41BE00E7CCB8 /* GoogleService-Info.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -373,6 +376,7 @@
 				267778A62BC8D76B0026FA5F /* HealthManager.swift in Sources */,
 				267778AA2BC9D6C50026FA5F /* WeeklySummery.swift in Sources */,
 				26890F642BF885D400275777 /* DetailedRun.swift in Sources */,
+				266794032E0A761D00E7CCB8 /* RunsListView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
