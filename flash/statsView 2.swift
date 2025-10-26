@@ -6,7 +6,6 @@
 //
 import SwiftUI
 
-//stats of run
 struct statsView: View {
     let workout: RunningData
     
@@ -79,8 +78,6 @@ struct statsView: View {
             }
             .frame(width: 400)
         }
-        .toolbarBackground(Color.black, for: .navigationBar)
-        .toolbarColorScheme(.dark, for: .navigationBar)
     }
 }
 

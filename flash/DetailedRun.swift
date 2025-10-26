@@ -9,6 +9,8 @@ import SwiftUI
 import CoreLocation
 import MapKit
 
+
+//view when pressing on a run
 struct DetailedRun: View {
     let workout: RunningData
     @State private var region: MKCoordinateRegion

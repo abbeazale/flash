@@ -113,7 +113,7 @@ class HealthManager: ObservableObject {
             // First load only initial batch
             group.addTask {
                 let initialData = await self.fetchRunningWorkouts(
-                    startDate: Date().startOfYear(),
+                    startDate: .distantPast,
                     limit: self.initialLoadLimit
                 )
                 
@@ -135,7 +135,7 @@ class HealthManager: ObservableObject {
         }
         
         let allData = await fetchRunningWorkouts(
-            startDate: Date().startOfYear(),
+            startDate: .distantPast,
             limit: 0 // 0 means no limit
         )
         
@@ -153,7 +153,7 @@ class HealthManager: ObservableObject {
     }
     
     //data is fetched asynchronously
-    //gets the data ran for the week 
+    //gets the data ran for the week
     func fetchWeeklyInfo(startDate: Date, completion: @escaping ([WeeklyRunData]) -> Void ) {
         let distance = HKQuantityType(.distanceWalkingRunning)
         //puts the two querys of within the last month and running
@@ -306,7 +306,7 @@ class HealthManager: ObservableObject {
     
     //method to get new workouts and save it to the database
     private func fetchAndSyncWorkouts() async {
-        let newWorkouts = await fetchRunningWorkouts(startDate: Date().startOfYear())
+        let newWorkouts = await fetchRunningWorkouts(startDate: .distantPast)
         
         // Filter workouts that are already saved
         let existingWorkoutDates = Set(allRuns.map { $0.date })
@@ -578,7 +578,7 @@ extension HealthManager {
     
     ///fetches all workouts at the start so it loads at the same time
     func lottaRuns() async {
-        let runningData = await fetchRunningWorkouts(startDate: Date().startOfYear())
+        let runningData = await fetchRunningWorkouts(startDate: .distantPast)
         await MainActor.run {
             self.allRuns = runningData
         }
