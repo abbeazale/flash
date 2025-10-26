@@ -60,6 +60,11 @@ class HealthManager: ObservableObject {
     @Published var isLoadingMore = false
     private let initialLoadLimit = 20
     
+    // Pagination state for Firebase
+    private var lastFirebaseDocument: DocumentSnapshot?
+    @Published var hasMoreRuns = true
+    private var isFetchingMore = false
+    
     //initalize the health manager getting the km and pace
     init() {
             Task {
@@ -286,12 +291,46 @@ class HealthManager: ObservableObject {
         )
     }
     
-    //get the runs from the firestore database on launch
-    func fetchRunningWorkoutsFirestore() async {
-        let runningDataArray = await firebaseManager.fetchRunningData()
-        DispatchQueue.main.async {
-            self.allRuns = runningDataArray.sorted { $0.date > $1.date }
+    //get the runs from the firestore database on launch with pagination
+    func fetchRunningWorkoutsFirestore(loadMore: Bool = false) async {
+        // Prevent multiple simultaneous fetches
+        guard !isFetchingMore else { return }
+        
+        await MainActor.run {
+            self.isFetchingMore = true
+            if loadMore {
+                self.isLoadingMore = true
+            } else {
+                self.isLoading = true
+            }
         }
+        
+        let result = await firebaseManager.fetchRunningData(
+            limit: 20,
+            startAfter: loadMore ? lastFirebaseDocument : nil
+        )
+        
+        await MainActor.run {
+            if loadMore {
+                // Append new runs to existing ones
+                self.allRuns.append(contentsOf: result.runs)
+            } else {
+                // Replace with new runs
+                self.allRuns = result.runs
+            }
+            
+            self.lastFirebaseDocument = result.lastDocument
+            self.hasMoreRuns = result.hasMore
+            self.isFetchingMore = false
+            self.isLoadingMore = false
+            self.isLoading = false
+        }
+    }
+    
+    // Method to load more runs (called when user scrolls to bottom)
+    func loadMoreRuns() async {
+        guard hasMoreRuns && !isFetchingMore else { return }
+        await fetchRunningWorkoutsFirestore(loadMore: true)
     }
 
     func startPeriodSync() {
@@ -576,11 +615,17 @@ class HealthManager: ObservableObject {
 //chart data
 extension HealthManager {
     
-    ///fetches all workouts at the start so it loads at the same time
+    ///fetches workouts with pagination - loads initial batch quickly
     func lottaRuns() async {
-        let runningData = await fetchRunningWorkouts(startDate: .distantPast)
-        await MainActor.run {
-            self.allRuns = runningData
+        // First, try to load from Firebase (faster)
+        await fetchRunningWorkoutsFirestore(loadMore: false)
+        
+        // If no data from Firebase, fall back to HealthKit
+        if allRuns.isEmpty {
+            let runningData = await fetchRunningWorkouts(startDate: .distantPast, limit: initialLoadLimit)
+            await MainActor.run {
+                self.allRuns = runningData
+            }
         }
     }
 }

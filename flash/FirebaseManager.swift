@@ -14,6 +14,8 @@ import CoreLocation
 class FirebaseManager {
     
     private let storage = Firestore.firestore()
+    private var lastDocument: DocumentSnapshot?
+    private var hasMoreData = true
     
     func saveRunningData(_ runningData: RunningData) async {
         do {
@@ -80,14 +82,21 @@ class FirebaseManager {
         }
     }
     
-    //fetch running data from the database
-    func fetchRunningData() async -> [RunningData] {
+    //fetch running data from the database with pagination
+    func fetchRunningData(limit: Int = 20, startAfter: DocumentSnapshot? = nil) async -> (runs: [RunningData], lastDocument: DocumentSnapshot?, hasMore: Bool) {
         do {
-            let snapshot = try await storage.collection("collection")
+            var query = storage.collection("collection")
                 .order(by: "date", descending: true)
-                .getDocuments()
+                .limit(to: limit)
             
-            return snapshot.documents.compactMap { document -> RunningData? in
+            // If we have a cursor, start after it
+            if let startAfter = startAfter {
+                query = query.start(afterDocument: startAfter)
+            }
+            
+            let snapshot = try await query.getDocuments()
+            
+            let runs = snapshot.documents.compactMap { document -> RunningData? in
                 let data = document.data()
                 
                 // Extract and validate required data
@@ -165,10 +174,32 @@ class FirebaseManager {
                 )
             }
             
+            // Determine if there's more data
+            let hasMore = snapshot.documents.count == limit
+            let lastDoc = snapshot.documents.last
+            
+            return (runs: runs, lastDocument: lastDoc, hasMore: hasMore)
+            
         } catch {
             print("Error fetching running data: \(error.localizedDescription)")
-            return []
+            return (runs: [], lastDocument: nil, hasMore: false)
         }
+    }
+    
+    //fetch running data from the database (legacy method for backward compatibility)
+    func fetchAllRunningData() async -> [RunningData] {
+        var allRuns: [RunningData] = []
+        var lastDoc: DocumentSnapshot? = nil
+        var hasMore = true
+        
+        while hasMore {
+            let result = await fetchRunningData(limit: 50, startAfter: lastDoc)
+            allRuns.append(contentsOf: result.runs)
+            lastDoc = result.lastDocument
+            hasMore = result.hasMore
+        }
+        
+        return allRuns
     }
 }
 

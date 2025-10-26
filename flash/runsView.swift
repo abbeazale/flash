@@ -20,7 +20,7 @@ struct runsView: View {
                     .font(Font.custom("CallingCode-Regular", size: 70))
                 //scroll view to scroll through workouts but keep the run at the top
                 ScrollView(.vertical){
-                    VStack{
+                    LazyVStack{
                         //put array is desending order
                         ForEach(manager.allRuns) { workout in
                             NavigationLink(destination: DetailedRun(workout: workout)) {
@@ -37,6 +37,25 @@ struct runsView: View {
                                 .background(Color.gray.opacity(0.2))
                                 .cornerRadius(8)
                             }
+                            .onAppear {
+                                // Auto-load more when approaching the end
+                                if workout.id == manager.allRuns.last?.id {
+                                    Task {
+                                        await manager.loadMoreRuns()
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // Loading indicator at bottom
+                        if manager.isLoadingMore {
+                            HStack {
+                                ProgressView()
+                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                Text("Loading more...")
+                                    .font(.subheadline)
+                            }
+                            .padding()
                         }
                     }
                 }.task {

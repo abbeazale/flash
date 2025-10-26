@@ -115,8 +115,8 @@ struct DetailedRun: View {
         
         let centerLat = (minLat + maxLat) / 2
         let centerLon = (minLon + maxLon) / 2
-        let spanLat = (maxLat - minLat) * 1.2 // Add some padding
-        let spanLon = (maxLon - minLon) * 1.2 // Add some padding
+        let spanLat = (maxLat - minLat) * 1.2
+        let spanLon = (maxLon - minLon) * 1.2
         
         region = MKCoordinateRegion(
             center: CLLocationCoordinate2D(latitude: centerLat, longitude: centerLon),
