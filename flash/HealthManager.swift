@@ -60,8 +60,21 @@ class HealthManager: ObservableObject {
     @Published var isLoadingMore = false
     private let initialLoadLimit = 20
     
+    // Pagination state for Firebase
+    private var lastFirebaseDocument: DocumentSnapshot?
+    @Published var hasMoreRuns = true
+    private var isFetchingMore = false
+    
+    // Cache for weekly summary
+    private var cachedWeeklySummaryDate: Date?
+    private let userDefaults = UserDefaults.standard
+    private let weeklySummaryCacheKey = "weeklySummaryCache"
+    
     //initalize the health manager getting the km and pace
     init() {
+            // Load cached weekly summary immediately for instant UI
+            loadCachedWeeklySummary()
+            
             Task {
                 await requestAuthorization()
                 await loadAllData()
@@ -109,23 +122,23 @@ class HealthManager: ObservableObject {
     }
     
     private func loadAllData() async {
-        await withTaskGroup(of: Void.self) { group in
-            // First load only initial batch
-            group.addTask {
-                let initialData = await self.fetchRunningWorkouts(
-                    startDate: Date().startOfYear(),
-                    limit: self.initialLoadLimit
-                )
-                
-                await MainActor.run {
-                    self.allRuns = initialData.sorted { $0.date > $1.date }
-                    self.isLoading = false // Stop loading indicator after initial load
-                }
-                
-                // Then load the rest
-                await self.loadRemainingData()
-            }
-            group.addTask { await self.calculateWeeklySummary() }
+        // Calculate weekly summary FIRST (it's faster now)
+        await calculateWeeklySummary()
+        
+        // Then load runs data
+        let initialData = await fetchRunningWorkouts(
+            startDate: .distantPast,
+            limit: initialLoadLimit
+        )
+        
+        await MainActor.run {
+            self.allRuns = initialData.sorted { $0.date > $1.date }
+            self.isLoading = false // Stop loading indicator after initial load
+        }
+        
+        // Load remaining data in background
+        Task {
+            await self.loadRemainingData()
         }
     }
     
@@ -135,7 +148,7 @@ class HealthManager: ObservableObject {
         }
         
         let allData = await fetchRunningWorkouts(
-            startDate: Date().startOfYear(),
+            startDate: .distantPast,
             limit: 0 // 0 means no limit
         )
         
@@ -153,7 +166,7 @@ class HealthManager: ObservableObject {
     }
     
     //data is fetched asynchronously
-    //gets the data ran for the week 
+    //gets the data ran for the week
     func fetchWeeklyInfo(startDate: Date, completion: @escaping ([WeeklyRunData]) -> Void ) {
         let distance = HKQuantityType(.distanceWalkingRunning)
         //puts the two querys of within the last month and running
@@ -286,12 +299,46 @@ class HealthManager: ObservableObject {
         )
     }
     
-    //get the runs from the firestore database on launch
-    func fetchRunningWorkoutsFirestore() async {
-        let runningDataArray = await firebaseManager.fetchRunningData()
-        DispatchQueue.main.async {
-            self.allRuns = runningDataArray.sorted { $0.date > $1.date }
+    //get the runs from the firestore database on launch with pagination
+    func fetchRunningWorkoutsFirestore(loadMore: Bool = false) async {
+        // Prevent multiple simultaneous fetches
+        guard !isFetchingMore else { return }
+        
+        await MainActor.run {
+            self.isFetchingMore = true
+            if loadMore {
+                self.isLoadingMore = true
+            } else {
+                self.isLoading = true
+            }
         }
+        
+        let result = await firebaseManager.fetchRunningData(
+            limit: 20,
+            startAfter: loadMore ? lastFirebaseDocument : nil
+        )
+        
+        await MainActor.run {
+            if loadMore {
+                // Append new runs to existing ones
+                self.allRuns.append(contentsOf: result.runs)
+            } else {
+                // Replace with new runs
+                self.allRuns = result.runs
+            }
+            
+            self.lastFirebaseDocument = result.lastDocument
+            self.hasMoreRuns = result.hasMore
+            self.isFetchingMore = false
+            self.isLoadingMore = false
+            self.isLoading = false
+        }
+    }
+    
+    // Method to load more runs (called when user scrolls to bottom)
+    func loadMoreRuns() async {
+        guard hasMoreRuns && !isFetchingMore else { return }
+        await fetchRunningWorkoutsFirestore(loadMore: true)
     }
 
     func startPeriodSync() {
@@ -306,7 +353,7 @@ class HealthManager: ObservableObject {
     
     //method to get new workouts and save it to the database
     private func fetchAndSyncWorkouts() async {
-        let newWorkouts = await fetchRunningWorkouts(startDate: Date().startOfYear())
+        let newWorkouts = await fetchRunningWorkouts(startDate: .distantPast)
         
         // Filter workouts that are already saved
         let existingWorkoutDates = Set(allRuns.map { $0.date })
@@ -538,21 +585,100 @@ class HealthManager: ObservableObject {
         }
     }
     
+    // Load cached weekly summary for instant UI
+    private func loadCachedWeeklySummary() {
+        guard let data = userDefaults.data(forKey: weeklySummaryCacheKey),
+              let cached = try? JSONDecoder().decode(WeeklySummaryCache.self, from: data) else {
+            return
+        }
+        
+        // Check if cache is from current week
+        let calendar = Calendar.current
+        let currentWeekStart = Date().startOfWeek()
+        
+        if calendar.isDate(cached.weekStartDate, equalTo: currentWeekStart, toGranularity: .weekOfYear) {
+            // Cache is valid, use it immediately
+            self.weeklyRunDistance = cached.totalDistance
+            self.weeklyRunTime = cached.totalDuration
+            self.weeklyRunPace = cached.averagePace
+            self.formattedRunTime = cached.formattedTime
+            self.formattedRunPace = cached.formattedPace
+            self.weeklyRunSummery = cached.weeklyData
+            self.cachedWeeklySummaryDate = cached.weekStartDate
+        }
+    }
+    
+    // Save weekly summary to cache
+    private func cacheWeeklySummary() {
+        let cache = WeeklySummaryCache(
+            weekStartDate: Date().startOfWeek(),
+            totalDistance: weeklyRunDistance,
+            totalDuration: weeklyRunTime,
+            averagePace: weeklyRunPace,
+            formattedTime: formattedRunTime,
+            formattedPace: formattedRunPace,
+            weeklyData: weeklyRunSummery
+        )
+        
+        if let encoded = try? JSONEncoder().encode(cache) {
+            userDefaults.set(encoded, forKey: weeklySummaryCacheKey)
+        }
+    }
+    
+    // OPTIMIZED: Fetch only basic workout info without expensive details
+    private func fetchBasicWorkouts(startDate: Date) async -> [(date: Date, distance: Double, duration: TimeInterval)] {
+        let workoutType = HKSampleType.workoutType()
+        let timePredicate = HKQuery.predicateForSamples(withStart: startDate, end: Date())
+        let workoutPredicate = HKQuery.predicateForWorkouts(with: .running)
+        let predicate = NSCompoundPredicate(andPredicateWithSubpredicates: [timePredicate, workoutPredicate])
+
+        let workouts = try? await withCheckedThrowingContinuation { (continuation: CheckedContinuation<[HKWorkout], Error>) in
+            let query = HKSampleQuery(
+                sampleType: workoutType,
+                predicate: predicate,
+                limit: HKObjectQueryNoLimit,
+                sortDescriptors: [NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: false)]
+            ) { _, samples, error in
+                if let error = error {
+                    continuation.resume(throwing: error)
+                } else if let workouts = samples as? [HKWorkout], !workouts.isEmpty {
+                    continuation.resume(returning: workouts)
+                } else {
+                    continuation.resume(returning: [])
+                }
+            }
+            healthStore.execute(query)
+        }
+
+        guard let workouts = workouts else { return [] }
+        
+        // Only extract the basic info we need - no expensive queries!
+        return workouts.map { workout in
+            (
+                date: workout.startDate,
+                distance: workout.totalDistance?.doubleValue(for: .meter()) ?? 0.0,
+                duration: workout.duration
+            )
+        }
+    }
+    
     func calculateWeeklySummary() async {
         let startDate = Date().startOfWeek()
         
-        let runningDataArray = await fetchRunningWorkouts(startDate: startDate)
+        // OPTIMIZED: Fetch only basic workout info (no routes, heart rate, etc.)
+        let basicWorkouts = await fetchBasicWorkouts(startDate: startDate)
         
         // Filter workouts to include only those from the current week
         let calendar = Calendar.current
-        let currentWeekWorkouts = runningDataArray.filter { calendar.isDate($0.date, equalTo: startDate, toGranularity: .weekOfYear) }
+        let currentWeekWorkouts = basicWorkouts.filter { calendar.isDate($0.date, equalTo: startDate, toGranularity: .weekOfYear) }
         
         // Calculate total distance, total duration, and average pace
         let totalDistance = currentWeekWorkouts.reduce(0.0) { $0 + $1.distance } / 1000 // Convert to kilometers
         let totalDuration = currentWeekWorkouts.reduce(0.0) { $0 + $1.duration } / 60 // Convert to minutes
         let averagePace = totalDuration > 0 ? totalDuration / totalDistance : 0.0 // min/km
         
-        let runTimeFormatted = self.formatDuration(currentWeekWorkouts.reduce(0.0) { $0 + $1.duration })
+        let totalDurationSeconds = currentWeekWorkouts.reduce(0.0) { $0 + $1.duration }
+        let runTimeFormatted = self.formatDuration(totalDurationSeconds)
         let runPaceFormatted = self.formatPace(averagePace)
         
         // Create WeeklyRunData for each day in the current week
@@ -568,7 +694,41 @@ class HealthManager: ObservableObject {
             self.weeklyRunSummery = weeklyRunData
             self.formattedRunTime = runTimeFormatted
             self.formattedRunPace = runPaceFormatted
+            
+            // Cache the results for instant loading next time
+            self.cacheWeeklySummary()
         }
+    }
+}
+
+// Cache structure for weekly summary
+private struct WeeklySummaryCache: Codable {
+    let weekStartDate: Date
+    let totalDistance: Double
+    let totalDuration: Double
+    let averagePace: Double
+    let formattedTime: String
+    let formattedPace: String
+    let weeklyData: [WeeklyRunData]
+}
+
+// Make WeeklyRunData Codable for caching
+extension WeeklyRunData: Codable {
+    enum CodingKeys: String, CodingKey {
+        case date, kmRan
+    }
+    
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let date = try container.decode(Date.self, forKey: .date)
+        let kmRan = try container.decode(Double.self, forKey: .kmRan)
+        self.init(date: date, kmRan: kmRan)
+    }
+    
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(date, forKey: .date)
+        try container.encode(kmRan, forKey: .kmRan)
     }
 }
 
@@ -576,11 +736,17 @@ class HealthManager: ObservableObject {
 //chart data
 extension HealthManager {
     
-    ///fetches all workouts at the start so it loads at the same time
+    ///fetches workouts with pagination - loads initial batch quickly
     func lottaRuns() async {
-        let runningData = await fetchRunningWorkouts(startDate: Date().startOfYear())
-        await MainActor.run {
-            self.allRuns = runningData
+        // First, try to load from Firebase (faster)
+        await fetchRunningWorkoutsFirestore(loadMore: false)
+        
+        // If no data from Firebase, fall back to HealthKit
+        if allRuns.isEmpty {
+            let runningData = await fetchRunningWorkouts(startDate: .distantPast, limit: initialLoadLimit)
+            await MainActor.run {
+                self.allRuns = runningData
+            }
         }
     }
 }

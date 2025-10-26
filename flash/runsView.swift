@@ -11,6 +11,9 @@ import HealthKit
 
 struct runsView: View {
     @EnvironmentObject var manager: HealthManager
+    @State private var hasLoadedInitialData = false
+    @State private var scrollPosition: UUID?
+    
     var body: some View {
         ZStack{
             Color(red: 54 / 255, green: 46 / 255, blue: 64/255)
@@ -20,7 +23,7 @@ struct runsView: View {
                     .font(Font.custom("CallingCode-Regular", size: 70))
                 //scroll view to scroll through workouts but keep the run at the top
                 ScrollView(.vertical){
-                    VStack{
+                    LazyVStack{
                         //put array is desending order
                         ForEach(manager.allRuns) { workout in
                             NavigationLink(destination: DetailedRun(workout: workout)) {
@@ -37,10 +40,37 @@ struct runsView: View {
                                 .background(Color.gray.opacity(0.2))
                                 .cornerRadius(8)
                             }
+                            .id(workout.id) // Important for scroll position tracking
+                            .onAppear {
+                                // Auto-load more when approaching the end
+                                if workout.id == manager.allRuns.last?.id {
+                                    Task {
+                                        await manager.loadMoreRuns()
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // Loading indicator at bottom
+                        if manager.isLoadingMore {
+                            HStack {
+                                ProgressView()
+                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                Text("Loading more...")
+                                    .font(.subheadline)
+                            }
+                            .padding()
                         }
                     }
-                }.task {
-                    await manager.lottaRuns()
+                }
+                .onAppear {
+                    // Only load data once on first appearance
+                    if !hasLoadedInitialData && manager.allRuns.isEmpty {
+                        Task {
+                            await manager.lottaRuns()
+                            hasLoadedInitialData = true
+                        }
+                    }
                 }
                 
             }.foregroundColor(.white)

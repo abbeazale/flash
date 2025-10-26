@@ -10,6 +10,9 @@ import SwiftUI
 struct detailsView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var manager: HealthManager
+    @State private var showingLongestRuns = false
+    @State private var showingFastestRuns = false
+    @State private var showingMostCalories = false
     
     // Calculate yearly stats
     private var yearlyStats: (distance: Double, duration: TimeInterval, pace: Double) {
@@ -52,15 +55,7 @@ struct detailsView: View {
                 Spacer()
     
                 VStack(spacing: 15) {
-                    NavigationLink {
-                        RunListPage(
-                            title: "Longest Runs",
-                            runs: manager.allRuns.sorted { $0.distance > $1.distance },
-                            metric: { run in
-                                String(format: "%.2f km", run.distance / 1000)
-                            }
-                        )
-                    } label: {
+                    Button(action: { showingLongestRuns = true }) {
                         Text("Longest Runs")
                             .font(Font.custom("CallingCode-Regular", size: 24))
                             .frame(maxWidth: .infinity)
@@ -68,20 +63,8 @@ struct detailsView: View {
                             .background(Color.gray.opacity(0.2))
                             .cornerRadius(8)
                     }
-
-                    NavigationLink {
-                        RunListPage(
-                            title: "Fastest Runs",
-                            runs: manager.allRuns
-                                .filter { $0.distance >= 1000 } // Only runs ≥ 1 km
-                                .sorted { first, second in
-                                    let pace1 = paceToSeconds(first.formattedPace)
-                                    let pace2 = paceToSeconds(second.formattedPace)
-                                    return pace1 < pace2
-                                },
-                            metric: { $0.formattedPace }
-                        )
-                    } label: {
+                    
+                    Button(action: { showingFastestRuns = true }) {
                         Text("Fastest Runs")
                             .font(Font.custom("CallingCode-Regular", size: 24))
                             .frame(maxWidth: .infinity)
@@ -89,16 +72,8 @@ struct detailsView: View {
                             .background(Color.gray.opacity(0.2))
                             .cornerRadius(8)
                     }
-
-                    NavigationLink {
-                        RunListPage(
-                            title: "Most Calories Burned",
-                            runs: manager.allRuns.sorted { $0.activeCalories > $1.activeCalories },
-                            metric: { run in
-                                String(format: "%.0f cal", run.activeCalories)
-                            }
-                        )
-                    } label: {
+                    
+                    Button(action: { showingMostCalories = true }) {
                         Text("Most Calories Burned")
                             .font(Font.custom("CallingCode-Regular", size: 24))
                             .frame(maxWidth: .infinity)
@@ -112,9 +87,55 @@ struct detailsView: View {
             }
             .padding()
             .foregroundColor(.white)
+            .sheet(isPresented: $showingLongestRuns) {
+                RunListSheet(
+                    title: "Longest Runs",
+                    runs: manager.allRuns.sorted { $0.distance > $1.distance },
+                    metric: { run in
+                        String(format: "%.2f km", run.distance / 1000)
+                    }
+                )
+            }
+            .sheet(isPresented: $showingFastestRuns) {
+                RunListSheet(
+                    title: "Fastest Runs",
+                    runs: manager.allRuns
+                        .filter { $0.distance >= 1000 } // Only include runs of 1km or more
+                        .sorted { first, second in
+                            let pace1 = paceToSeconds(first.formattedPace)
+                            let pace2 = paceToSeconds(second.formattedPace)
+                            return pace1 < pace2 // Sort by ascending pace (faster times first)
+                        },
+                    metric: { run in
+                        run.formattedPace
+                    }
+                )
+            }
+            .sheet(isPresented: $showingMostCalories) {
+                RunListSheet(
+                    title: "Most Calories Burned",
+                    runs: manager.allRuns.sorted { $0.activeCalories > $1.activeCalories },
+                    metric: { run in
+                        String(format: "%.0f cal", run.activeCalories)
+                    }
+                )
+            }
         }
-        .toolbarBackground(Color.black, for: .navigationBar)
-        .toolbarColorScheme(.dark, for: .navigationBar)
+        .navigationBarTitleDisplayMode(.inline)
+            .navigationBarBackButtonHidden(true)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(action: {
+                        dismiss()
+                    }) {
+                        Image(systemName: "arrowshape.left.fill")
+                            .padding(.leading, 30)
+                    }
+                }
+            }
+            .toolbarBackground(Color(red: 54 / 255, green: 46 / 255, blue: 64 / 255), for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
     }
     
     // Helper function to format duration
