@@ -42,7 +42,26 @@ class FirebaseManager {
                 ]
             }
             
-            // 4. Prepare data dictionary
+            // 4. Convert heart rate time series data
+            let heartRateTimeSeriesData: [[String: Any]] = runningData.heartRateData.map { dataPoint in
+                [
+                    "timestamp": dataPoint.timestamp,
+                    "heartRate": dataPoint.heartRate,
+                    "relativeTime": dataPoint.relativeTime
+                ]
+            }
+            
+            // 5. Convert heart rate zones data
+            let heartRateZonesData: [[String: Any]] = runningData.heartRateZones.map { zone in
+                [
+                    "zone": zone.zone,
+                    "range": zone.range,
+                    "percentage": zone.percentage,
+                    "color": zone.color
+                ]
+            }
+            
+            // 6. Prepare data dictionary
             let data: [String: Any] = [
                 "id": runningData.id.uuidString,
                 "date": runningData.date,
@@ -61,10 +80,12 @@ class FirebaseManager {
                 "activeCalories": runningData.activeCalories,
                 "route": routeData,
                 "pacePerKM": pacePerKMData,
-                "formatDuration": runningData.formattedDuration
+                "formatDuration": runningData.formattedDuration,
+                "heartRateTimeSeries": heartRateTimeSeriesData,
+                "heartRateZones": heartRateZonesData
             ]
             
-            // 5. Check for existing document and save
+            // 7. Check for existing document and save
             let docRef = storage.collection("collection").document(uniqueId)
             let docSnapshot = try await docRef.getDocument()
             
@@ -73,7 +94,7 @@ class FirebaseManager {
                 return
             }
             
-            // 6. Save the document with the unique ID
+            // 8. Save the document with the unique ID
             try await docRef.setData(data)
             print("Running data successfully saved with ID: \(uniqueId)")
             
@@ -152,6 +173,37 @@ class FirebaseManager {
                     return SegmentPace(kilometer: kilometer, pace: pace, formattedPace: formattedPace)
                 }
                 
+                // Convert heart rate time series data (with backward compatibility)
+                let heartRateData: [HeartRateDataPoint]
+                if let heartRateTimeSeriesData = data["heartRateTimeSeries"] as? [[String: Any]] {
+                    heartRateData = heartRateTimeSeriesData.compactMap { hrData in
+                        guard let timestamp = (hrData["timestamp"] as? Timestamp)?.dateValue(),
+                              let hr = hrData["heartRate"] as? Double,
+                              let relativeTime = hrData["relativeTime"] as? Double else {
+                            return nil
+                        }
+                        return HeartRateDataPoint(timestamp: timestamp, heartRate: hr, relativeTime: relativeTime)
+                    }
+                } else {
+                    heartRateData = []
+                }
+                
+                // Convert heart rate zones data (with backward compatibility)
+                let heartRateZones: [HeartRateZone]
+                if let heartRateZonesData = data["heartRateZones"] as? [[String: Any]] {
+                    heartRateZones = heartRateZonesData.compactMap { zoneData in
+                        guard let zone = zoneData["zone"] as? String,
+                              let range = zoneData["range"] as? String,
+                              let percentage = zoneData["percentage"] as? Double,
+                              let color = zoneData["color"] as? String else {
+                            return nil
+                        }
+                        return HeartRateZone(zone: zone, range: range, percentage: percentage, color: color)
+                    }
+                } else {
+                    heartRateZones = []
+                }
+                
                 // Create and return RunningData object
                 return RunningData(
                     date: date,
@@ -170,7 +222,9 @@ class FirebaseManager {
                     activeCalories: activeCalories,
                     route: route,
                     formatDuration: formatDuration,
-                    pacePerKM: pacePerKM
+                    pacePerKM: pacePerKM,
+                    heartRateData: heartRateData,
+                    heartRateZones: heartRateZones
                 )
             }
             
