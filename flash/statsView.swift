@@ -13,13 +13,15 @@ struct statsView: View {
     @State private var cachedElevationSegments: [Double] = []
     
     var body: some View {
+        let _ = print("🔍 StatsView loaded - Cadence data count: \(workout.cadenceData.count)")
         ScrollView {
-            VStack(alignment: .leading) {
+            VStack(alignment: .leading, spacing: 0) {
                 Text("Splits")
                     .font(Font.custom("CallingCode-Regular", size: 24))
                     .padding(.bottom, 16)
                 HStack {
                     Text("Km")
+                        .padding(.bottom, 8)
                     
                     Spacer()
                     Text("Pace")
@@ -33,6 +35,7 @@ struct statsView: View {
                         Text("\(segment.kilometer)")
                             .font(Font.custom("CallingCode-Regular", size: 18))
                             .frame(width: 20, alignment: .leading)
+                            
                         
                         
                         Text(segment.formattedPace)
@@ -46,6 +49,7 @@ struct statsView: View {
                         
                     }
                     .padding(.horizontal)
+                    .padding(.bottom, 8)
                 }
             }
             .padding()
@@ -145,6 +149,9 @@ struct statsView: View {
             .padding(.vertical)
             .frame(maxWidth: .infinity)
             
+            // CADENCE SECTION
+            cadenceSection
+            
             // HEART RATE SECTION
             VStack(alignment: .leading, spacing: 12) {
                 HStack(alignment: .firstTextBaseline) {
@@ -172,6 +179,8 @@ struct statsView: View {
                 
                 // Heart Rate Chart
                 if !workout.heartRateData.isEmpty {
+                    let hrLastTime = workout.heartRateData.map { $0.relativeTime }.max() ?? 0
+                    let xMax = max(workout.duration, hrLastTime)
                     GeometryReader { geometry in
                         Chart {
                             ForEach(Array(workout.heartRateData.enumerated()), id: \.offset) { index, dataPoint in
@@ -221,9 +230,9 @@ struct statsView: View {
                                     .font(Font.custom("CallingCode-Regular", size: 12))
                             }
                         }
-                        .chartXScale(domain: 0...(workout.duration))
+                        .chartXScale(domain: 0...xMax)
                     }
-                    .frame(height: 200)
+                    .frame(width: 350, height: 200)
                     .padding(.horizontal)
                     .background(
                         RoundedRectangle(cornerRadius: 12)
@@ -238,6 +247,8 @@ struct statsView: View {
                 }
                 
                 // Time labels
+                let hrLastTime = workout.heartRateData.map { $0.relativeTime }.max() ?? 0
+                let xMax = max(workout.duration, hrLastTime)
                 HStack {
                     Text("0:00")
                         .font(Font.custom("CallingCode-Regular", size: 14))
@@ -245,7 +256,7 @@ struct statsView: View {
                     
                     Spacer()
                     
-                    Text(workout.formattedDuration)
+                    Text(formatTime(xMax))
                         .font(Font.custom("CallingCode-Regular", size: 14))
                         .foregroundColor(.white.opacity(0.6))
                 }
@@ -317,7 +328,129 @@ struct statsView: View {
     }
 }
 
-extension statsView{
+extension statsView {
+    // MARK: - Cadence Section
+    private var cadenceSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("Cadence")
+                    .font(Font.custom("CallingCode-Regular", size: 24))
+                
+                Spacer()
+                
+                if let maxCadence = workout.cadenceData.map({ $0.cadence }).max(),
+                   let minCadence = workout.cadenceData.map({ $0.cadence }).min() {
+                    VStack(alignment: .trailing, spacing: 2) {
+                        Text("\(Int(maxCadence)) spm")
+                            .font(Font.custom("CallingCode-Regular", size: 14))
+                            .foregroundColor(Color("AccentBlue"))
+                        Text("Avg: \(Int(workout.cadence)) spm")
+                            .font(Font.custom("CallingCode-Regular", size: 14))
+                            .foregroundColor(Color("AccentBlue").opacity(0.8))
+                        Text("\(Int(minCadence)) spm")
+                            .font(Font.custom("CallingCode-Regular", size: 14))
+                            .foregroundColor(Color("AccentBlue").opacity(0.6))
+                    }
+                }
+            }
+            .padding(.horizontal)
+            
+            // Cadence Chart
+            if !workout.cadenceData.isEmpty && workout.cadenceData.count >= 3 {
+                cadenceChart
+            } else {
+                VStack(spacing: 8) {
+                    Text("Not enough cadence data for this run")
+                        .font(Font.custom("CallingCode-Regular", size: 14))
+                        .foregroundColor(.white.opacity(0.6))
+                    Text("Data points: \(workout.cadenceData.count)")
+                        .font(Font.custom("CallingCode-Regular", size: 12))
+                        .foregroundColor(.white.opacity(0.4))
+                }
+                .padding(.horizontal)
+                .onAppear {
+                    print("❌ Cadence view: Only \(workout.cadenceData.count) points available (need 3+)")
+                    if let first = workout.cadenceData.first {
+                        print("   Sample point: cadence=\(first.cadence), time=\(first.relativeTime)")
+                    }
+                }
+            }
+            
+            // Time labels
+            HStack {
+                Text("0:00")
+                    .font(Font.custom("CallingCode-Regular", size: 14))
+                    .foregroundColor(.white.opacity(0.6))
+                
+                Spacer()
+                
+                Text(workout.formattedDuration)
+                    .font(Font.custom("CallingCode-Regular", size: 14))
+                    .foregroundColor(.white.opacity(0.6))
+            }
+            .padding(.horizontal, 24)
+        }
+        .padding(.vertical)
+        .frame(maxWidth: .infinity)
+    }
+    
+    private var cadenceChart: some View {
+        let minCadence = workout.cadenceData.map { $0.cadence }.min() ?? 0
+        let maxCadence = workout.cadenceData.map { $0.cadence }.max() ?? 200
+        let yAxisMin = max(0, floor(minCadence / 10) * 10 - 10)
+        let yAxisMax = ceil(maxCadence / 10) * 10 + 10
+
+        return VStack(spacing: 0) {
+            Chart(workout.cadenceData, id: \.timestamp) { dataPoint in
+                LineMark(
+                    x: .value("Time", dataPoint.relativeTime),
+                    y: .value("Cadence", dataPoint.cadence)
+                )
+                .foregroundStyle(Color.blue)
+                .lineStyle(StrokeStyle(lineWidth: 3))
+
+                AreaMark(
+                    x: .value("Time", dataPoint.relativeTime),
+                    yStart: .value("Baseline", yAxisMin),
+                    yEnd: .value("Cadence", dataPoint.cadence)
+                )
+                .foregroundStyle(Color.blue.opacity(0.3))
+            }
+            .chartXAxis {
+                AxisMarks(position: .bottom) { _ in
+                    AxisGridLine().foregroundStyle(Color.white.opacity(0.1))
+                    AxisTick().foregroundStyle(.clear)
+                    AxisValueLabel()
+                        .foregroundStyle(.white.opacity(0.6))
+                        .font(Font.custom("CallingCode-Regular", size: 12))
+                }
+            }
+            .chartYAxis {
+                AxisMarks(position: .leading) { _ in
+                    AxisGridLine().foregroundStyle(Color.white.opacity(0.1))
+                    AxisValueLabel()
+                        .foregroundStyle(.white.opacity(0.6))
+                        .font(Font.custom("CallingCode-Regular", size: 12))
+                }
+            }
+            .chartXScale(domain: 0...(workout.duration))
+            .chartYScale(domain: yAxisMin...yAxisMax)
+            .frame(height: 200)
+            .padding(.horizontal)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color.white.opacity(0.05))
+            )
+            .padding(.horizontal)
+            .onAppear {
+                print("📊 Cadence Chart - Data points: \(workout.cadenceData.count)")
+                print("📊 Cadence Range: \(minCadence) - \(maxCadence) SPM")
+                print("📊 Y-Axis: \(yAxisMin) - \(yAxisMax)")
+            }
+        }
+    }
+    
+    // MARK: - Helper Functions
     private func barWidth(for pace: Double) -> CGFloat {
         let maxPace = workout.pacePerKM.map { $0.pace }.max() ?? 1
         let maxWidth: CGFloat = 200 // Fixed width for bars
@@ -362,6 +495,19 @@ extension statsView{
 extension Array where Element == Double {
     func average() -> Double {
         return self.isEmpty ? 0 : self.reduce(0, +) / Double(self.count)
+    }
+}
+
+// Helper to format seconds as mm:ss or h:mm:ss
+private func formatTime(_ seconds: Double) -> String {
+    let total = Int(seconds.rounded())
+    let h = total / 3600
+    let m = (total % 3600) / 60
+    let s = total % 60
+    if h > 0 {
+        return String(format: "%d:%02d:%02d", h, m, s)
+    } else {
+        return String(format: "%d:%02d", m, s)
     }
 }
 

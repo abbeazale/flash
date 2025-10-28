@@ -188,6 +188,21 @@ class FirebaseManager {
                     heartRateData = []
                 }
                 
+                // Convert cadence time series data (with backward compatibility)
+                let cadenceData: [CadenceDataPoint]
+                if let cadenceTimeSeriesData = data["cadenceTimeSeries"] as? [[String: Any]] {
+                    cadenceData = cadenceTimeSeriesData.compactMap { cadData in
+                        guard let timestamp = (cadData["timestamp"] as? Timestamp)?.dateValue(),
+                              let cad = cadData["cadence"] as? Double,
+                              let relativeTime = cadData["relativeTime"] as? Double else {
+                            return nil
+                        }
+                        return CadenceDataPoint(timestamp: timestamp, cadence: cad, relativeTime: relativeTime)
+                    }
+                } else {
+                    cadenceData = []
+                }
+                
                 // Convert heart rate zones data (with backward compatibility)
                 let heartRateZones: [HeartRateZone]
                 if let heartRateZonesData = data["heartRateZones"] as? [[String: Any]] {
@@ -224,6 +239,7 @@ class FirebaseManager {
                     formatDuration: formatDuration,
                     pacePerKM: pacePerKM,
                     heartRateData: heartRateData,
+                    cadenceData: cadenceData,
                     heartRateZones: heartRateZones
                 )
             }
