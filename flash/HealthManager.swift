@@ -271,6 +271,10 @@ class HealthManager: ObservableObject {
         let groundContactTime = await getAverageQuantity(for: workout, type: .runningGroundContactTime)
         let activeCalories = await fetchActiveCalories(for: workout)
         let route = await fetchRoute(for: workout)
+        
+        // Fetch time-series heart rate data
+        let heartRateData = await fetchHeartRateTimeSeries(for: workout)
+        let heartRateZones = calculateHeartRateZones(heartRateData: heartRateData, averageHR: heartRate)
 
         let formattedDuration = formatDuration(workout.duration)
         let distance = workout.totalDistance?.doubleValue(for: .meter()) ?? 0.0
@@ -295,7 +299,9 @@ class HealthManager: ObservableObject {
             activeCalories: activeCalories,
             route: route,
             formatDuration: formattedDurationD,
-            pacePerKM: pacePerKM
+            pacePerKM: pacePerKM,
+            heartRateData: heartRateData,
+            heartRateZones: heartRateZones
         )
     }
     
@@ -430,6 +436,85 @@ class HealthManager: ObservableObject {
             
             return segmentPaces
         }
+    
+    // Fetch heart rate data points over time during the workout
+    private func fetchHeartRateTimeSeries(for workout: HKWorkout) async -> [HeartRateDataPoint] {
+        let heartRateType = HKQuantityType.quantityType(forIdentifier: .heartRate)!
+        let predicate = HKQuery.predicateForSamples(withStart: workout.startDate, end: workout.endDate, options: .strictStartDate)
+        
+        return await withCheckedContinuation { continuation in
+            let query = HKSampleQuery(
+                sampleType: heartRateType,
+                predicate: predicate,
+                limit: HKObjectQueryNoLimit,
+                sortDescriptors: [NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: true)]
+            ) { _, samples, error in
+                guard let samples = samples as? [HKQuantitySample], !samples.isEmpty else {
+                    continuation.resume(returning: [])
+                    return
+                }
+                
+                let startTime = workout.startDate
+                let heartRatePoints = samples.map { sample -> HeartRateDataPoint in
+                    let heartRate = sample.quantity.doubleValue(for: HKUnit.count().unitDivided(by: HKUnit.minute()))
+                    let relativeTime = sample.startDate.timeIntervalSince(startTime)
+                    return HeartRateDataPoint(
+                        timestamp: sample.startDate,
+                        heartRate: heartRate,
+                        relativeTime: relativeTime
+                    )
+                }
+                
+                continuation.resume(returning: heartRatePoints)
+            }
+            
+            healthStore.execute(query)
+        }
+    }
+    
+    // Calculate heart rate zones based on time-series data
+    // Standard zones: Zone 1 (50-60%), Zone 2 (60-70%), Zone 3 (70-80%), Zone 4 (80-90%), Zone 5 (90-100%)
+    private func calculateHeartRateZones(heartRateData: [HeartRateDataPoint], averageHR: Double) -> [HeartRateZone] {
+        guard !heartRateData.isEmpty else { return [] }
+        
+        // Estimate max heart rate (220 - age), or use highest recorded HR * 1.05 as a fallback
+        let maxHR = heartRateData.map { $0.heartRate }.max() ?? averageHR
+        let estimatedMaxHR = max(maxHR * 1.05, 180.0) // Use 180 as minimum max HR
+        
+        // Define zones based on % of max HR
+        let zones = [
+            (name: "Zone 1", min: 0.50, max: 0.60, color: "#90EE90"),    // Light Green
+            (name: "Zone 2", min: 0.60, max: 0.70, color: "#4CAF50"),    // Green
+            (name: "Zone 3", min: 0.70, max: 0.80, color: "#FFA500"),    // Orange
+            (name: "Zone 4", min: 0.80, max: 0.90, color: "#FF6347"),    // Red
+            (name: "Zone 5", min: 0.90, max: 1.10, color: "#DC143C")     // Dark Red
+        ]
+        
+        var zoneBreakdown: [HeartRateZone] = []
+        let totalDataPoints = Double(heartRateData.count)
+        
+        for zone in zones {
+            let minHR = estimatedMaxHR * zone.min
+            let maxHR = estimatedMaxHR * zone.max
+            
+            let pointsInZone = heartRateData.filter { dataPoint in
+                dataPoint.heartRate >= minHR && dataPoint.heartRate < maxHR
+            }.count
+            
+            let percentage = (Double(pointsInZone) / totalDataPoints) * 100.0
+            
+            let hrZone = HeartRateZone(
+                zone: zone.name,
+                range: "\(Int(minHR))-\(Int(maxHR)) bpm",
+                percentage: percentage.rounded(toPlaces: 1),
+                color: zone.color
+            )
+            
+            zoneBreakdown.append(hrZone)
+        }
+        
+        return zoneBreakdown
+    }
     
     private func getAverageQuantity(for workout: HKWorkout, type: HKQuantityTypeIdentifier) async -> Double {
         let quantityType = HKQuantityType.quantityType(forIdentifier: type)!
