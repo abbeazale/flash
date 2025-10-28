@@ -90,7 +90,7 @@ class HealthManager: ObservableObject {
             HKObjectType.activitySummaryType(),
             HKSampleType.workoutType()
         ]
-        let readTypes: Set = [
+        var readTypes: Set<HKObjectType> = [
             HKObjectType.workoutType(),
             HKObjectType.quantityType(forIdentifier: .runningPower)!,
             HKObjectType.quantityType(forIdentifier: .runningSpeed)!,
@@ -103,6 +103,10 @@ class HealthManager: ObservableObject {
             HKObjectType.quantityType(forIdentifier: .distanceWalkingRunning)!,
             HKObjectType.quantityType(forIdentifier: .activeEnergyBurned)!
         ]
+
+        if let runningCadenceType = HKObjectType.quantityType(forIdentifier: .runningCadence) {
+            readTypes.insert(runningCadenceType)
+        }
         
         do {
             try await healthStore.requestAuthorization(toShare: [], read: healthTypes)
@@ -274,6 +278,7 @@ class HealthManager: ObservableObject {
         
         // Fetch time-series heart rate data
         let heartRateData = await fetchHeartRateTimeSeries(for: workout)
+        let cadenceData = await fetchCadenceTimeSeries(for: workout)
         let heartRateZones = calculateHeartRateZones(heartRateData: heartRateData, averageHR: heartRate)
 
         let formattedDuration = formatDuration(workout.duration)
@@ -301,6 +306,7 @@ class HealthManager: ObservableObject {
             formatDuration: formattedDurationD,
             pacePerKM: pacePerKM,
             heartRateData: heartRateData,
+            cadenceData: cadenceData,
             heartRateZones: heartRateZones
         )
     }
@@ -441,7 +447,7 @@ class HealthManager: ObservableObject {
     private func fetchHeartRateTimeSeries(for workout: HKWorkout) async -> [HeartRateDataPoint] {
         let heartRateType = HKQuantityType.quantityType(forIdentifier: .heartRate)!
         let predicate = HKQuery.predicateForSamples(withStart: workout.startDate, end: workout.endDate, options: .strictStartDate)
-        
+
         return await withCheckedContinuation { continuation in
             let query = HKSampleQuery(
                 sampleType: heartRateType,
@@ -467,7 +473,44 @@ class HealthManager: ObservableObject {
                 
                 continuation.resume(returning: heartRatePoints)
             }
-            
+
+            healthStore.execute(query)
+        }
+    }
+
+    private func fetchCadenceTimeSeries(for workout: HKWorkout) async -> [CadenceDataPoint] {
+        guard let cadenceType = HKQuantityType.quantityType(forIdentifier: .runningCadence) else {
+            return []
+        }
+
+        let predicate = HKQuery.predicateForSamples(withStart: workout.startDate, end: workout.endDate, options: .strictStartDate)
+
+        return await withCheckedContinuation { continuation in
+            let query = HKSampleQuery(
+                sampleType: cadenceType,
+                predicate: predicate,
+                limit: HKObjectQueryNoLimit,
+                sortDescriptors: [NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: true)]
+            ) { _, samples, _ in
+                guard let samples = samples as? [HKQuantitySample], !samples.isEmpty else {
+                    continuation.resume(returning: [])
+                    return
+                }
+
+                let startTime = workout.startDate
+                let cadencePoints = samples.map { sample -> CadenceDataPoint in
+                    let cadence = sample.quantity.doubleValue(for: HKUnit.count().unitDivided(by: HKUnit.minute()))
+                    let relativeTime = sample.startDate.timeIntervalSince(startTime)
+                    return CadenceDataPoint(
+                        timestamp: sample.startDate,
+                        cadence: cadence,
+                        relativeTime: relativeTime
+                    )
+                }
+
+                continuation.resume(returning: cadencePoints)
+            }
+
             healthStore.execute(query)
         }
     }

@@ -50,8 +50,17 @@ class FirebaseManager {
                     "relativeTime": dataPoint.relativeTime
                 ]
             }
-            
-            // 5. Convert heart rate zones data
+
+            // 5. Convert cadence time series data
+            let cadenceTimeSeriesData: [[String: Any]] = runningData.cadenceData.map { dataPoint in
+                [
+                    "timestamp": dataPoint.timestamp,
+                    "cadence": dataPoint.cadence,
+                    "relativeTime": dataPoint.relativeTime
+                ]
+            }
+
+            // 6. Convert heart rate zones data
             let heartRateZonesData: [[String: Any]] = runningData.heartRateZones.map { zone in
                 [
                     "zone": zone.zone,
@@ -60,8 +69,8 @@ class FirebaseManager {
                     "color": zone.color
                 ]
             }
-            
-            // 6. Prepare data dictionary
+
+            // 7. Prepare data dictionary
             let data: [String: Any] = [
                 "id": runningData.id.uuidString,
                 "date": runningData.date,
@@ -82,19 +91,20 @@ class FirebaseManager {
                 "pacePerKM": pacePerKMData,
                 "formatDuration": runningData.formattedDuration,
                 "heartRateTimeSeries": heartRateTimeSeriesData,
+                "cadenceTimeSeries": cadenceTimeSeriesData,
                 "heartRateZones": heartRateZonesData
             ]
-            
-            // 7. Check for existing document and save
+
+            // 8. Check for existing document and save
             let docRef = storage.collection("collection").document(uniqueId)
             let docSnapshot = try await docRef.getDocument()
-            
+
             if docSnapshot.exists {
                 print("Run already exists with ID: \(uniqueId), skipping save")
                 return
             }
-            
-            // 8. Save the document with the unique ID
+
+            // 9. Save the document with the unique ID
             try await docRef.setData(data)
             print("Running data successfully saved with ID: \(uniqueId)")
             
@@ -188,6 +198,21 @@ class FirebaseManager {
                     heartRateData = []
                 }
                 
+                // Convert cadence time series data (with backward compatibility)
+                let cadenceData: [CadenceDataPoint]
+                if let cadenceTimeSeriesData = data["cadenceTimeSeries"] as? [[String: Any]] {
+                    cadenceData = cadenceTimeSeriesData.compactMap { cadenceDict in
+                        guard let timestamp = (cadenceDict["timestamp"] as? Timestamp)?.dateValue(),
+                              let cadence = cadenceDict["cadence"] as? Double,
+                              let relativeTime = cadenceDict["relativeTime"] as? Double else {
+                            return nil
+                        }
+                        return CadenceDataPoint(timestamp: timestamp, cadence: cadence, relativeTime: relativeTime)
+                    }
+                } else {
+                    cadenceData = []
+                }
+
                 // Convert heart rate zones data (with backward compatibility)
                 let heartRateZones: [HeartRateZone]
                 if let heartRateZonesData = data["heartRateZones"] as? [[String: Any]] {
@@ -224,6 +249,7 @@ class FirebaseManager {
                     formatDuration: formatDuration,
                     pacePerKM: pacePerKM,
                     heartRateData: heartRateData,
+                    cadenceData: cadenceData,
                     heartRateZones: heartRateZones
                 )
             }
