@@ -90,7 +90,7 @@ class HealthManager: ObservableObject {
             HKObjectType.activitySummaryType(),
             HKSampleType.workoutType()
         ]
-        var readTypes: Set = [
+        let readTypes: Set = [
             HKObjectType.workoutType(),
             HKObjectType.quantityType(forIdentifier: .runningPower)!,
             HKObjectType.quantityType(forIdentifier: .runningSpeed)!,
@@ -103,31 +103,6 @@ class HealthManager: ObservableObject {
             HKObjectType.quantityType(forIdentifier: .distanceWalkingRunning)!,
             HKObjectType.quantityType(forIdentifier: .activeEnergyBurned)!
         ]
-
-        // Add running cadence if available (iOS 16.0+, watchOS 9.0+)
-        // Try multiple possible identifier strings
-        let possibleCadenceIdentifiers = [
-            "HKQuantityTypeIdentifierRunningCadence",
-            "RunningCadence",
-            "HKQuantityTypeIdentifierAppleRunningCadence"
-        ]
-        
-        var cadenceTypeAdded = false
-        for identifierString in possibleCadenceIdentifiers {
-            let cadenceIdentifier = HKQuantityTypeIdentifier(rawValue: identifierString)
-            if let runningCadenceType = HKObjectType.quantityType(forIdentifier: cadenceIdentifier) {
-                readTypes.insert(runningCadenceType)
-                print("✅ Running cadence type added using identifier: \(identifierString)")
-                cadenceTypeAdded = true
-                break
-            }
-        }
-        
-        if !cadenceTypeAdded {
-            print("⚠️ Running cadence type not available. Tried identifiers: \(possibleCadenceIdentifiers)")
-            print("   Device: iOS \(UIDevice.current.systemVersion)")
-            print("   Note: Will calculate cadence from step count instead")
-        }
         
         do {
             try await healthStore.requestAuthorization(toShare: [], read: healthTypes)
@@ -297,15 +272,9 @@ class HealthManager: ObservableObject {
         let activeCalories = await fetchActiveCalories(for: workout)
         let route = await fetchRoute(for: workout)
         
-        // Fetch time-series heart rate and cadence data
+        // Fetch time-series heart rate and derive cadence from step samples.
         let heartRateData = await fetchHeartRateTimeSeries(for: workout)
-        var cadenceData = await fetchCadenceTimeSeries(for: workout)
-        
-        // If no cadence sensor data available, calculate from steps as fallback
-        if cadenceData.isEmpty {
-            print("ℹ️ No cadence sensor data, calculating from step count")
-            cadenceData = await calculateCadenceFromSteps(for: workout)
-        }
+        let cadenceData = await calculateCadenceFromSteps(for: workout)
         
         let heartRateZones = calculateHeartRateZones(heartRateData: heartRateData, averageHR: heartRate)
 
@@ -506,61 +475,7 @@ class HealthManager: ObservableObject {
         }
     }
 
-    private func fetchCadenceTimeSeries(for workout: HKWorkout) async -> [CadenceDataPoint] {
-        // Running cadence requires iOS 16.0+
-        guard #available(iOS 16.0, *) else {
-            print("⚠️ Cadence: Requires iOS 16.0 or later (current iOS version too old)")
-            return []
-        }
-        
-        // Try to get the running cadence type using the raw value identifier
-        let cadenceIdentifier = HKQuantityTypeIdentifier(rawValue: "HKQuantityTypeIdentifierRunningCadence")
-        guard let cadenceType = HKQuantityType.quantityType(forIdentifier: cadenceIdentifier) else {
-            print("⚠️ Cadence: Running cadence type not available on this device")
-            return []
-        }
-
-        let predicate = HKQuery.predicateForSamples(withStart: workout.startDate, end: workout.endDate, options: .strictStartDate)
-
-        return await withCheckedContinuation { continuation in
-            let query = HKSampleQuery(
-                sampleType: cadenceType,
-                predicate: predicate,
-                limit: HKObjectQueryNoLimit,
-                sortDescriptors: [NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: true)]
-            ) { _, samples, error in
-                if let error = error {
-                    print("❌ Cadence fetch error: \(error.localizedDescription)")
-                    continuation.resume(returning: [])
-                    return
-                }
-                
-                guard let samples = samples as? [HKQuantitySample], !samples.isEmpty else {
-                    print("⚠️ Cadence: No samples found for workout on \(workout.startDate)")
-                    continuation.resume(returning: [])
-                    return
-                }
-
-                let startTime = workout.startDate
-                let cadencePoints = samples.map { sample -> CadenceDataPoint in
-                    let cadence = sample.quantity.doubleValue(for: HKUnit.count().unitDivided(by: HKUnit.minute()))
-                    let relativeTime = sample.startDate.timeIntervalSince(startTime)
-                    return CadenceDataPoint(
-                        timestamp: sample.startDate,
-                        cadence: cadence,
-                        relativeTime: relativeTime
-                    )
-                }
-
-                print("✅ Cadence: Fetched \(cadencePoints.count) samples for workout")
-                continuation.resume(returning: cadencePoints)
-            }
-
-            healthStore.execute(query)
-        }
-    }
-    
-    // Fallback: Calculate cadence from step count when sensor data unavailable
+    // Calculate cadence from step count because HealthKit does not expose a running-cadence quantity type in this SDK.
     private func calculateCadenceFromSteps(for workout: HKWorkout) async -> [CadenceDataPoint] {
         let stepType = HKQuantityType.quantityType(forIdentifier: .stepCount)!
         let predicate = HKQuery.predicateForSamples(withStart: workout.startDate, end: workout.endDate, options: .strictStartDate)

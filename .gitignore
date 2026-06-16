@@ -9,7 +9,3 @@ build.xcresult/
 # User-specific Xcode files
 *.xcuserstate
 *.xcuserdatad
-
-# Test files (keep these for now as they might be needed)
-# flashTests/SnapshotTestCase.swift
-# flashTests/StatsViewSnapshotTests.swift
