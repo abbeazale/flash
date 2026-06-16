@@ -12,18 +12,19 @@ import CoreLocation
 
 
 class FirebaseManager {
-    
+
     private let storage = Firestore.firestore()
     private var lastDocument: DocumentSnapshot?
     private var hasMoreData = true
-    
+    private let maxPersistedTimeSeriesPoints = 720
+
     func saveRunningData(_ runningData: RunningData) async {
         do {
             // 1. Create unique ID from date and distance
             let dateFormatter = DateFormatter()
             dateFormatter.dateFormat = "yyyy-MM-dd-HH-mm"
             let uniqueId = "\(dateFormatter.string(from: runningData.date))-\(String(format: "%.2f", runningData.distance))"
-            
+
             // 2. Convert route data
             let routeData: [[String:Double]] = runningData.route.map { location in
                 [
@@ -32,7 +33,7 @@ class FirebaseManager {
                     "altitude": location.altitude
                 ]
             }
-            
+
             // 3. Convert pace data
             let pacePerKMData: [[String: Any]] = runningData.pacePerKM.map { segment in
                 [
@@ -41,16 +42,24 @@ class FirebaseManager {
                     "formattedPace": segment.formattedPace
                 ]
             }
-            
-            // 4. Convert heart rate time series data
-            let heartRateTimeSeriesData: [[String: Any]] = runningData.heartRateData.map { dataPoint in
+
+            // 4. Convert bounded heart rate and cadence time series data
+            let heartRateTimeSeriesData: [[String: Any]] = boundedTimeSeries(runningData.heartRateData).map { dataPoint in
                 [
                     "timestamp": dataPoint.timestamp,
                     "heartRate": dataPoint.heartRate,
                     "relativeTime": dataPoint.relativeTime
                 ]
             }
-            
+
+            let cadenceTimeSeriesData: [[String: Any]] = boundedTimeSeries(runningData.cadenceData).map { dataPoint in
+                [
+                    "timestamp": dataPoint.timestamp,
+                    "cadence": dataPoint.cadence,
+                    "relativeTime": dataPoint.relativeTime
+                ]
+            }
+
             // 5. Convert heart rate zones data
             let heartRateZonesData: [[String: Any]] = runningData.heartRateZones.map { zone in
                 [
@@ -60,7 +69,7 @@ class FirebaseManager {
                     "color": zone.color
                 ]
             }
-            
+
             // 6. Prepare data dictionary
             let data: [String: Any] = [
                 "id": runningData.id.uuidString,
@@ -82,44 +91,45 @@ class FirebaseManager {
                 "pacePerKM": pacePerKMData,
                 "formatDuration": runningData.formattedDuration,
                 "heartRateTimeSeries": heartRateTimeSeriesData,
+                "cadenceTimeSeries": cadenceTimeSeriesData,
                 "heartRateZones": heartRateZonesData
             ]
-            
+
             // 7. Check for existing document and save
             let docRef = storage.collection("collection").document(uniqueId)
             let docSnapshot = try await docRef.getDocument()
-            
+
             if docSnapshot.exists {
                 print("Run already exists with ID: \(uniqueId), skipping save")
                 return
             }
-            
+
             // 8. Save the document with the unique ID
             try await docRef.setData(data)
             print("Running data successfully saved with ID: \(uniqueId)")
-            
+
         } catch {
             print("Error saving running data: \(error.localizedDescription)")
         }
     }
-    
+
     //fetch running data from the database with pagination
     func fetchRunningData(limit: Int = 20, startAfter: DocumentSnapshot? = nil) async -> (runs: [RunningData], lastDocument: DocumentSnapshot?, hasMore: Bool) {
         do {
             var query = storage.collection("collection")
                 .order(by: "date", descending: true)
                 .limit(to: limit)
-            
+
             // If we have a cursor, start after it
             if let startAfter = startAfter {
                 query = query.start(afterDocument: startAfter)
             }
-            
+
             let snapshot = try await query.getDocuments()
-            
+
             let runs = snapshot.documents.compactMap { document -> RunningData? in
                 let data = document.data()
-                
+
                 // Extract and validate required data
                 guard let idString = data["id"] as? String,
                       let id = UUID(uuidString: idString),
@@ -144,7 +154,7 @@ class FirebaseManager {
                     print("Failed to parse document: \(document.documentID)")
                     return nil
                 }
-                
+
                 // Convert route data to CLLocation array
                 let route: [CLLocation] = routeData.compactMap { locationData in
                     guard let latitude = locationData["latitude"],
@@ -152,7 +162,7 @@ class FirebaseManager {
                           let altitude = locationData["altitude"] else {
                         return nil
                     }
-                    
+
                     let coordinate = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
                     return CLLocation(
                         coordinate: coordinate,
@@ -162,7 +172,7 @@ class FirebaseManager {
                         timestamp: Date()
                     )
                 }
-                
+
                 // Convert pace data to SegmentPace array
                 let pacePerKM: [SegmentPace] = pacePerKMData.compactMap { segmentData in
                     guard let kilometer = segmentData["kilometer"] as? Int,
@@ -172,7 +182,7 @@ class FirebaseManager {
                     }
                     return SegmentPace(kilometer: kilometer, pace: pace, formattedPace: formattedPace)
                 }
-                
+
                 // Convert heart rate time series data (with backward compatibility)
                 let heartRateData: [HeartRateDataPoint]
                 if let heartRateTimeSeriesData = data["heartRateTimeSeries"] as? [[String: Any]] {
@@ -187,7 +197,22 @@ class FirebaseManager {
                 } else {
                     heartRateData = []
                 }
-                
+
+                // Convert cadence time series data (with backward compatibility)
+                let cadenceData: [CadenceDataPoint]
+                if let cadenceTimeSeriesData = data["cadenceTimeSeries"] as? [[String: Any]] {
+                    cadenceData = cadenceTimeSeriesData.compactMap { cadData in
+                        guard let timestamp = (cadData["timestamp"] as? Timestamp)?.dateValue(),
+                              let cad = cadData["cadence"] as? Double,
+                              let relativeTime = cadData["relativeTime"] as? Double else {
+                            return nil
+                        }
+                        return CadenceDataPoint(timestamp: timestamp, cadence: cad, relativeTime: relativeTime)
+                    }
+                } else {
+                    cadenceData = []
+                }
+
                 // Convert heart rate zones data (with backward compatibility)
                 let heartRateZones: [HeartRateZone]
                 if let heartRateZonesData = data["heartRateZones"] as? [[String: Any]] {
@@ -203,7 +228,7 @@ class FirebaseManager {
                 } else {
                     heartRateZones = []
                 }
-                
+
                 // Create and return RunningData object
                 return RunningData(
                     date: date,
@@ -224,36 +249,63 @@ class FirebaseManager {
                     formatDuration: formatDuration,
                     pacePerKM: pacePerKM,
                     heartRateData: heartRateData,
+                    cadenceData: cadenceData,
                     heartRateZones: heartRateZones
                 )
             }
-            
+
             // Determine if there's more data
             let hasMore = snapshot.documents.count == limit
             let lastDoc = snapshot.documents.last
-            
+
             return (runs: runs, lastDocument: lastDoc, hasMore: hasMore)
-            
+
         } catch {
             print("Error fetching running data: \(error.localizedDescription)")
             return (runs: [], lastDocument: nil, hasMore: false)
         }
     }
-    
+
     //fetch running data from the database (legacy method for backward compatibility)
     func fetchAllRunningData() async -> [RunningData] {
         var allRuns: [RunningData] = []
         var lastDoc: DocumentSnapshot? = nil
         var hasMore = true
-        
+
         while hasMore {
             let result = await fetchRunningData(limit: 50, startAfter: lastDoc)
             allRuns.append(contentsOf: result.runs)
             lastDoc = result.lastDocument
             hasMore = result.hasMore
         }
-        
+
         return allRuns
+    }
+
+    private func boundedTimeSeries(_ data: [HeartRateDataPoint]) -> [HeartRateDataPoint] {
+        guard data.count > maxPersistedTimeSeriesPoints else { return data }
+        return evenlySampled(data, limit: maxPersistedTimeSeriesPoints)
+    }
+
+    private func boundedTimeSeries(_ data: [CadenceDataPoint]) -> [CadenceDataPoint] {
+        guard data.count > maxPersistedTimeSeriesPoints else { return data }
+        return evenlySampled(data, limit: maxPersistedTimeSeriesPoints)
+    }
+
+    private func evenlySampled<T>(_ data: [T], limit: Int) -> [T] {
+        guard data.count > limit, limit > 1 else { return data }
+
+        let lastIndex = data.count - 1
+        let step = Double(lastIndex) / Double(limit - 1)
+        var sampled: [T] = []
+        sampled.reserveCapacity(limit)
+
+        for index in 0..<limit {
+            let sourceIndex = min(lastIndex, Int(round(Double(index) * step)))
+            sampled.append(data[sourceIndex])
+        }
+
+        return sampled
     }
 }
 

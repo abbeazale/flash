@@ -48,6 +48,13 @@ struct HeartRateDataPoint: Hashable {
     let relativeTime: TimeInterval // seconds from start
 }
 
+// Cadence data point for time series
+struct CadenceDataPoint: Hashable {
+    let timestamp: Date
+    let cadence: Double
+    let relativeTime: TimeInterval // seconds from start
+}
+
 // Heart rate zone breakdown
 struct HeartRateZone: Identifiable, Hashable {
     let id = UUID()
@@ -78,6 +85,7 @@ struct RunningData: Identifiable, Hashable {
     let formatDuration: String
     let pacePerKM: [SegmentPace]
     let heartRateData: [HeartRateDataPoint] // Time series heart rate data
+    let cadenceData: [CadenceDataPoint] // Time series cadence data
     let heartRateZones: [HeartRateZone] // Heart rate zone breakdown
 }
 
