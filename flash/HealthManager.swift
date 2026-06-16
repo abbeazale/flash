@@ -509,51 +509,69 @@ class HealthManager: ObservableObject {
                 var stepsInWindow: Double = 0
                 var durationInWindow: TimeInterval = 0
 
-                for sample in samples {
-                    let steps = sample.quantity.doubleValue(for: HKUnit.count())
-                    let sampleDuration = sample.endDate.timeIntervalSince(sample.startDate)
-
-                    // If this sample goes beyond the current window, finalize the window
-                    while sample.endDate > windowStart.addingTimeInterval(timeWindow) {
-                        if stepsInWindow > 0 && durationInWindow >= 5 { // Need at least 5 seconds of data
-                            let cadence = (stepsInWindow / durationInWindow) * 60.0
-
-                            // Only include realistic cadence (100-220 SPM for running)
-                            if cadence >= 100 && cadence <= 220 {
-                                let relativeTime = windowStart.timeIntervalSince(startTime) + (timeWindow / 2)
-                                cadencePoints.append(CadenceDataPoint(
-                                    timestamp: windowStart.addingTimeInterval(timeWindow / 2),
-                                    cadence: cadence,
-                                    relativeTime: relativeTime
-                                ))
-                            }
-                        }
-
-                        // Move to next window
+                func flushWindow() {
+                    defer {
                         windowStart = windowStart.addingTimeInterval(timeWindow)
                         stepsInWindow = 0
                         durationInWindow = 0
                     }
 
-                    // Add this sample to the current window
-                    if sample.startDate >= windowStart {
-                        stepsInWindow += steps
-                        durationInWindow += sampleDuration
+                    guard stepsInWindow > 0 && durationInWindow >= 5 else { return }
+
+                    let cadence = (stepsInWindow / durationInWindow) * 60.0
+
+                    // Only include realistic cadence (100-220 SPM for running)
+                    guard cadence >= 100 && cadence <= 220 else { return }
+
+                    let relativeTime = windowStart.timeIntervalSince(startTime) + (timeWindow / 2)
+                    cadencePoints.append(CadenceDataPoint(
+                        timestamp: windowStart.addingTimeInterval(timeWindow / 2),
+                        cadence: cadence,
+                        relativeTime: relativeTime
+                    ))
+                }
+
+                for sample in samples {
+                    let steps = sample.quantity.doubleValue(for: HKUnit.count())
+                    let sampleStart = max(sample.startDate, workout.startDate)
+                    let sampleEnd = min(sample.endDate, workout.endDate)
+                    let originalSampleDuration = sample.endDate.timeIntervalSince(sample.startDate)
+                    let clippedSampleDuration = sampleEnd.timeIntervalSince(sampleStart)
+
+                    guard steps > 0, originalSampleDuration > 0, clippedSampleDuration > 0 else {
+                        continue
+                    }
+
+                    let stepsPerSecond = steps / originalSampleDuration
+                    var cursor = sampleStart
+
+                    while cursor < sampleEnd {
+                        let windowEnd = windowStart.addingTimeInterval(timeWindow)
+
+                        if cursor >= windowEnd {
+                            flushWindow()
+                            continue
+                        }
+
+                        let overlapEnd = min(sampleEnd, windowEnd)
+                        let overlapDuration = overlapEnd.timeIntervalSince(cursor)
+
+                        guard overlapDuration > 0 else {
+                            break
+                        }
+
+                        stepsInWindow += stepsPerSecond * overlapDuration
+                        durationInWindow += overlapDuration
+                        cursor = overlapEnd
+
+                        if cursor >= windowEnd {
+                            flushWindow()
+                        }
                     }
                 }
 
                 // Process the final window
-                if stepsInWindow > 0 && durationInWindow >= 5 {
-                    let cadence = (stepsInWindow / durationInWindow) * 60.0
-                    if cadence >= 100 && cadence <= 220 {
-                        let relativeTime = windowStart.timeIntervalSince(startTime) + (timeWindow / 2)
-                        cadencePoints.append(CadenceDataPoint(
-                            timestamp: windowStart.addingTimeInterval(timeWindow / 2),
-                            cadence: cadence,
-                            relativeTime: relativeTime
-                        ))
-                    }
-                }
+                flushWindow()
 
                 print("✅ Calculated \(cadencePoints.count) cadence points from step count")
                 continuation.resume(returning: cadencePoints)
