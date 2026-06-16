@@ -256,7 +256,7 @@ class HealthManager: ObservableObject {
     private func processWorkout(_ workout: HKWorkout) async -> RunningData? {
         let stepCount = await getStepCount(for: workout)
         let totalTimeMinutes = workout.duration / 60
-        let cadence = stepCount / totalTimeMinutes
+        let cadence = totalTimeMinutes > 0 ? stepCount / totalTimeMinutes : 0
 
         var elevationGain: Double = 0.0
         if let elevationQuantity = workout.metadata?[HKMetadataKeyElevationAscended] as? HKQuantity {
@@ -639,7 +639,7 @@ class HealthManager: ObservableObject {
 
                 // Convert speed from m/s to min/km
                 if type == .runningSpeed {
-                    averageValue = (1 / averageValue) * 16.6667 // 1 m/s = 16.6667 min/km
+                    averageValue = averageValue > 0 ? (1 / averageValue) * 16.6667 : 0 // 1 m/s = 16.6667 min/km
                 }
 
                 continuation.resume(returning: averageValue)
@@ -730,7 +730,7 @@ class HealthManager: ObservableObject {
     ///returns the pace for the whole run
     func formatPace(duration: TimeInterval, distance: Double) -> String {
         guard distance > 0 else {
-            return "u didnt even run"
+            return "N/A"
         }
 
         let pace = duration / distance // pace in seconds per meter
@@ -744,7 +744,7 @@ class HealthManager: ObservableObject {
 
     ///formatted pace for each split
     func formatPace(_ pace: Double) -> String {
-        guard pace.isFinite && !pace.isNaN else {
+        guard pace.isFinite && !pace.isNaN && pace > 0 else {
             return "N/A"
         }
 
@@ -869,7 +869,7 @@ class HealthManager: ObservableObject {
         // Calculate total distance, total duration, and average pace
         let totalDistance = currentWeekWorkouts.reduce(0.0) { $0 + $1.distance } / 1000 // Convert to kilometers
         let totalDuration = currentWeekWorkouts.reduce(0.0) { $0 + $1.duration } / 60 // Convert to minutes
-        let averagePace = totalDuration > 0 ? totalDuration / totalDistance : 0.0 // min/km
+        let averagePace = totalDistance > 0 ? totalDuration / totalDistance : 0.0 // min/km
 
         let totalDurationSeconds = currentWeekWorkouts.reduce(0.0) { $0 + $1.duration }
         let runTimeFormatted = self.formatDuration(totalDurationSeconds)

@@ -311,7 +311,7 @@ class FirebaseManager {
 
 ///formatted pace for each split
 func formatPace(_ pace: Double) -> String {
-    guard pace.isFinite && !pace.isNaN else {
+    guard pace.isFinite && !pace.isNaN && pace > 0 else {
         return "N/A"
     }
 
