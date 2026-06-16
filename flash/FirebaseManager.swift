@@ -71,7 +71,7 @@ class FirebaseManager {
             }
 
             // 6. Prepare data dictionary
-            let data: [String: Any] = [
+            var data: [String: Any] = [
                 "id": runningData.id.uuidString,
                 "date": runningData.date,
                 "distance": runningData.distance,
@@ -94,6 +94,10 @@ class FirebaseManager {
                 "cadenceTimeSeries": cadenceTimeSeriesData,
                 "heartRateZones": heartRateZonesData
             ]
+
+            if let healthKitUUID = runningData.healthKitUUID {
+                data["healthKitUUID"] = healthKitUUID.uuidString
+            }
 
             // 7. Check for existing document and save
             let docRef = storage.collection("collection").document(uniqueId)
@@ -229,6 +233,8 @@ class FirebaseManager {
                     heartRateZones = []
                 }
 
+                let healthKitUUID = (data["healthKitUUID"] as? String).flatMap { UUID(uuidString: $0) }
+
                 // Create and return RunningData object
                 return RunningData(
                     date: date,
@@ -250,7 +256,8 @@ class FirebaseManager {
                     pacePerKM: pacePerKM,
                     heartRateData: heartRateData,
                     cadenceData: cadenceData,
-                    heartRateZones: heartRateZones
+                    heartRateZones: heartRateZones,
+                    healthKitUUID: healthKitUUID
                 )
             }
 

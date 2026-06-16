@@ -87,6 +87,7 @@ struct RunningData: Identifiable, Hashable {
     let heartRateData: [HeartRateDataPoint] // Time series heart rate data
     let cadenceData: [CadenceDataPoint] // Time series cadence data
     let heartRateZones: [HeartRateZone] // Heart rate zone breakdown
+    let healthKitUUID: UUID? // HealthKit workout identifier for lazy detail hydration
 }
 
 
@@ -98,4 +99,3 @@ struct Stats {
     let formattPace: String
 
 }
-
