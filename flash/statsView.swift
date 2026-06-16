@@ -11,7 +11,7 @@ import Charts
 struct statsView: View {
     let workout: RunningData
     @State private var cachedElevationSegments: [Double] = []
-    
+
     var body: some View {
         let _ = print("🔍 StatsView loaded - Cadence data count: \(workout.cadenceData.count)")
         ScrollView {
@@ -22,31 +22,31 @@ struct statsView: View {
                 HStack {
                     Text("Km")
                         .padding(.bottom, 8)
-                    
+
                     Spacer()
                     Text("Pace")
                 }
                 .font(Font.custom("CallingCode-Regular", size: 18))
                 .padding(.horizontal)
                 .padding(.bottom, 8)
-                
+
                 ForEach(workout.pacePerKM, id: \.kilometer) { segment in
                     HStack {
                         Text("\(segment.kilometer)")
                             .font(Font.custom("CallingCode-Regular", size: 18))
                             .frame(width: 20, alignment: .leading)
-                            
-                        
-                        
+
+
+
                         Text(segment.formattedPace)
                             .font(Font.custom("CallingCode-Regular", size: 18))
                             .frame(width: 60, alignment: .leading)
-                        
+
                         Rectangle()
                             .fill(Color.blue)
                             .frame(width: self.barWidth(for: segment.pace), height: 20)
                             .cornerRadius(4)
-                        
+
                     }
                     .padding(.horizontal)
                     .padding(.bottom, 8)
@@ -54,15 +54,15 @@ struct statsView: View {
             }
             .padding()
             .frame(maxWidth: .infinity)
-            
+
             // REDESIGNED ELEVATION SECTION
             VStack(alignment: .leading, spacing: 12){
                 HStack(alignment: .firstTextBaseline) {
                     Text("Elevation")
                         .font(Font.custom("CallingCode-Regular", size: 24))
-                    
+
                     Spacer()
-                    
+
                     if let max = cachedElevationSegments.max(),
                        let min = cachedElevationSegments.min() {
                         VStack(alignment: .trailing, spacing: 2) {
@@ -76,7 +76,7 @@ struct statsView: View {
                     }
                 }
                 .padding(.horizontal)
-                
+
                 // Elevation Chart
                 GeometryReader { geometry in
                     ZStack(alignment: .bottom) {
@@ -88,7 +88,7 @@ struct statsView: View {
                                 Spacer()
                             }
                         }
-                        
+
                         // Elevation bars
                         HStack(alignment: .bottom, spacing: 1) {
                             ForEach(Array(cachedElevationSegments.enumerated()), id: \.offset) { index, elevation in
@@ -119,21 +119,21 @@ struct statsView: View {
                         .fill(Color.white.opacity(0.05))
                 )
                 .padding(.horizontal)
-                
+
                 // Time labels
                 HStack {
                     Text("0:00")
                         .font(Font.custom("CallingCode-Regular", size: 14))
                         .foregroundColor(.white.opacity(0.6))
-                    
+
                     Spacer()
-                    
+
                     Text(workout.formattedDuration)
                         .font(Font.custom("CallingCode-Regular", size: 14))
                         .foregroundColor(.white.opacity(0.6))
                 }
                 .padding(.horizontal, 24)
-                
+
                 // Total elevation gain
                 if workout.elevation > 0 {
                     HStack {
@@ -148,18 +148,18 @@ struct statsView: View {
             }
             .padding(.vertical)
             .frame(maxWidth: .infinity)
-            
+
             // CADENCE SECTION
             cadenceSection
-            
+
             // HEART RATE SECTION
             VStack(alignment: .leading, spacing: 12) {
                 HStack(alignment: .firstTextBaseline) {
                     Text("Heart Rate")
                         .font(Font.custom("CallingCode-Regular", size: 24))
-                    
+
                     Spacer()
-                    
+
                     if let maxHR = workout.heartRateData.map({ $0.heartRate }).max(),
                        let minHR = workout.heartRateData.map({ $0.heartRate }).min() {
                         VStack(alignment: .trailing, spacing: 2) {
@@ -176,7 +176,7 @@ struct statsView: View {
                     }
                 }
                 .padding(.horizontal)
-                
+
                 // Heart Rate Chart
                 if !workout.heartRateData.isEmpty {
                     let hrLastTime = workout.heartRateData.map { $0.relativeTime }.max() ?? 0
@@ -196,7 +196,7 @@ struct statsView: View {
                                     )
                                 )
                                 .lineStyle(StrokeStyle(lineWidth: 2))
-                                
+
                                 AreaMark(
                                     x: .value("Time", dataPoint.relativeTime),
                                     y: .value("Heart Rate", dataPoint.heartRate)
@@ -245,7 +245,7 @@ struct statsView: View {
                         .foregroundColor(.white.opacity(0.6))
                         .padding(.horizontal)
                 }
-                
+
                 // Time labels
                 let hrLastTime = workout.heartRateData.map { $0.relativeTime }.max() ?? 0
                 let xMax = max(workout.duration, hrLastTime)
@@ -253,9 +253,9 @@ struct statsView: View {
                     Text("0:00")
                         .font(Font.custom("CallingCode-Regular", size: 14))
                         .foregroundColor(.white.opacity(0.6))
-                    
+
                     Spacer()
-                    
+
                     Text(formatTime(xMax))
                         .font(Font.custom("CallingCode-Regular", size: 14))
                         .foregroundColor(.white.opacity(0.6))
@@ -264,14 +264,14 @@ struct statsView: View {
             }
             .padding(.vertical)
             .frame(maxWidth: .infinity)
-            
+
             // HEART RATE ZONES SECTION
             VStack(alignment: .leading, spacing: 12) {
                 Text("Heart Rate Zones")
                     .font(Font.custom("CallingCode-Regular", size: 24))
                     .padding(.horizontal)
                     .padding(.bottom, 8)
-                
+
                 if !workout.heartRateZones.isEmpty {
                     ForEach(workout.heartRateZones) { zone in
                         HStack {
@@ -285,20 +285,20 @@ struct statsView: View {
                                     .foregroundColor(.white.opacity(0.6))
                             }
                             .frame(width: 100, alignment: .leading)
-                            
+
                             // Percentage bar
                             ZStack(alignment: .leading) {
                                 Rectangle()
                                     .fill(Color.white.opacity(0.1))
                                     .frame(height: 30)
                                     .cornerRadius(6)
-                                
+
                                 Rectangle()
                                     .fill(Color(hex: zone.color))
                                     .frame(width: max(30, CGFloat(zone.percentage) * 1.8), height: 30)
                                     .cornerRadius(6)
                             }
-                            
+
                             // Percentage text
                             Text(String(format: "%.1f%%", zone.percentage))
                                 .font(Font.custom("CallingCode-Regular", size: 16))
@@ -335,9 +335,9 @@ extension statsView {
             HStack(alignment: .firstTextBaseline) {
                 Text("Cadence")
                     .font(Font.custom("CallingCode-Regular", size: 24))
-                
+
                 Spacer()
-                
+
                 if let maxCadence = workout.cadenceData.map({ $0.cadence }).max(),
                    let minCadence = workout.cadenceData.map({ $0.cadence }).min() {
                     VStack(alignment: .trailing, spacing: 2) {
@@ -354,7 +354,7 @@ extension statsView {
                 }
             }
             .padding(.horizontal)
-            
+
             // Cadence Chart
             if !workout.cadenceData.isEmpty && workout.cadenceData.count >= 3 {
                 cadenceChart
@@ -375,15 +375,15 @@ extension statsView {
                     }
                 }
             }
-            
+
             // Time labels
             HStack {
                 Text("0:00")
                     .font(Font.custom("CallingCode-Regular", size: 14))
                     .foregroundColor(.white.opacity(0.6))
-                
+
                 Spacer()
-                
+
                 Text(workout.formattedDuration)
                     .font(Font.custom("CallingCode-Regular", size: 14))
                     .foregroundColor(.white.opacity(0.6))
@@ -393,7 +393,7 @@ extension statsView {
         .padding(.vertical)
         .frame(maxWidth: .infinity)
     }
-    
+
     private var cadenceChart: some View {
         let minCadence = workout.cadenceData.map { $0.cadence }.min() ?? 0
         let maxCadence = workout.cadenceData.map { $0.cadence }.max() ?? 200
@@ -449,43 +449,43 @@ extension statsView {
             }
         }
     }
-    
+
     // MARK: - Helper Functions
     private func barWidth(for pace: Double) -> CGFloat {
         let maxPace = workout.pacePerKM.map { $0.pace }.max() ?? 1
         let maxWidth: CGFloat = 200 // Fixed width for bars
-        
+
         return CGFloat((pace / maxPace) * Double(maxWidth))
     }
 
-    
+
     private func elevationSegments() -> [Double] {
         guard !workout.route.isEmpty else { return [] }
-        
+
         let segmentCount = 60
         let segmentLength = max(1, workout.route.count / segmentCount)
         var segments: [Double] = []
-        
+
         for i in stride(from: 0, to: workout.route.count, by: segmentLength) {
             let endIndex = min(i + segmentLength, workout.route.count)
             let segment = workout.route[i..<endIndex]
             let avgElevation = segment.map { $0.altitude }.average()
             segments.append(avgElevation)
         }
-        
+
         return segments
     }
-    
+
     private func elevationHeight(_ elevation: Double, maxHeight: CGFloat) -> CGFloat {
         guard !cachedElevationSegments.isEmpty else { return 5 }
-        
+
         let maxElevation = cachedElevationSegments.max() ?? 1.0
         let minElevation = cachedElevationSegments.min() ?? 0.0
         let range = maxElevation - minElevation
-        
+
         // Avoid division by zero for flat terrain
         guard range > 0 else { return maxHeight * 0.5 }
-        
+
         let normalizedElevation = (elevation - minElevation) / range
         return CGFloat(normalizedElevation * Double(maxHeight * 0.9)) // Use 90% of height for better visibility
     }
