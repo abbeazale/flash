@@ -63,13 +63,17 @@ struct statsView: View {
 
                     Spacer()
 
-                    if let max = cachedElevationSegments.max(),
-                       let min = cachedElevationSegments.min() {
+                    let elevations = workout.route.map { $0.altitude }
+                    if let maxElevation = elevations.max(),
+                       let minElevation = elevations.min() {
                         VStack(alignment: .trailing, spacing: 2) {
-                            Text("\(Int(max))m")
+                            Text("\(Int(maxElevation))m")
                                 .font(Font.custom("CallingCode-Regular", size: 14))
                                 .foregroundColor(.green)
-                            Text("\(Int(min))m")
+                            Text("Avg: \(Int(elevations.average()))m")
+                                .font(Font.custom("CallingCode-Regular", size: 14))
+                                .foregroundColor(.green.opacity(0.8))
+                            Text("\(Int(minElevation))m")
                                 .font(Font.custom("CallingCode-Regular", size: 14))
                                 .foregroundColor(.green.opacity(0.6))
                         }
@@ -180,59 +184,64 @@ struct statsView: View {
                 // Heart Rate Chart
                 if !workout.heartRateData.isEmpty {
                     let hrLastTime = workout.heartRateData.map { $0.relativeTime }.max() ?? 0
-                    let xMax = max(workout.duration, hrLastTime)
-                    GeometryReader { geometry in
-                        Chart {
-                            ForEach(Array(workout.heartRateData.enumerated()), id: \.offset) { index, dataPoint in
-                                LineMark(
-                                    x: .value("Time", dataPoint.relativeTime),
-                                    y: .value("Heart Rate", dataPoint.heartRate)
+                    let xMax = hrLastTime > 0 ? hrLastTime : workout.duration
+                    let hrValues = workout.heartRateData.map { $0.heartRate }
+                    let hrMax = hrValues.max() ?? 0
+                    let hrMin = hrValues.min() ?? 0
+                    let yMax = (ceil(hrMax / 10) * 10) + 10
+                    let yMin = max(0, floor(hrMin / 10) * 10 - 10)
+                    Chart {
+                        ForEach(Array(workout.heartRateData.enumerated()), id: \.offset) { index, dataPoint in
+                            LineMark(
+                                x: .value("Time", dataPoint.relativeTime),
+                                y: .value("Heart Rate", dataPoint.heartRate)
+                            )
+                            .foregroundStyle(
+                                LinearGradient(
+                                    gradient: Gradient(colors: [.red, .orange]),
+                                    startPoint: .leading,
+                                    endPoint: .trailing
                                 )
-                                .foregroundStyle(
-                                    LinearGradient(
-                                        gradient: Gradient(colors: [.red, .orange]),
-                                        startPoint: .leading,
-                                        endPoint: .trailing
-                                    )
-                                )
-                                .lineStyle(StrokeStyle(lineWidth: 2))
+                            )
+                            .lineStyle(StrokeStyle(lineWidth: 2))
 
-                                AreaMark(
-                                    x: .value("Time", dataPoint.relativeTime),
-                                    y: .value("Heart Rate", dataPoint.heartRate)
+                            AreaMark(
+                                x: .value("Time", dataPoint.relativeTime),
+                                yStart: .value("Baseline", yMin),
+                                yEnd: .value("Heart Rate", dataPoint.heartRate)
+                            )
+                            .foregroundStyle(
+                                LinearGradient(
+                                    gradient: Gradient(colors: [
+                                        Color.red.opacity(0.3),
+                                        Color.orange.opacity(0.1)
+                                    ]),
+                                    startPoint: .top,
+                                    endPoint: .bottom
                                 )
-                                .foregroundStyle(
-                                    LinearGradient(
-                                        gradient: Gradient(colors: [
-                                            Color.red.opacity(0.3),
-                                            Color.orange.opacity(0.1)
-                                        ]),
-                                        startPoint: .top,
-                                        endPoint: .bottom
-                                    )
-                                )
-                            }
+                            )
                         }
-                        .chartXAxis {
-                            AxisMarks(position: .bottom) { _ in
-                                AxisGridLine().foregroundStyle(Color.white.opacity(0.1))
-                                AxisTick().foregroundStyle(.clear)
-                                AxisValueLabel()
-                                    .foregroundStyle(.white.opacity(0.6))
-                                    .font(Font.custom("CallingCode-Regular", size: 12))
-                            }
-                        }
-                        .chartYAxis {
-                            AxisMarks(position: .leading) { _ in
-                                AxisGridLine().foregroundStyle(Color.white.opacity(0.1))
-                                AxisValueLabel()
-                                    .foregroundStyle(.white.opacity(0.6))
-                                    .font(Font.custom("CallingCode-Regular", size: 12))
-                            }
-                        }
-                        .chartXScale(domain: 0...xMax)
                     }
-                    .frame(width: 350, height: 200)
+                    .chartXAxis {
+                        AxisMarks(position: .bottom) { _ in
+                            AxisGridLine().foregroundStyle(Color.white.opacity(0.1))
+                            AxisTick().foregroundStyle(.clear)
+                            AxisValueLabel()
+                                .foregroundStyle(.white.opacity(0.6))
+                                .font(Font.custom("CallingCode-Regular", size: 12))
+                        }
+                    }
+                    .chartYAxis {
+                        AxisMarks(position: .leading) { _ in
+                            AxisGridLine().foregroundStyle(Color.white.opacity(0.1))
+                            AxisValueLabel()
+                                .foregroundStyle(.white.opacity(0.6))
+                                .font(Font.custom("CallingCode-Regular", size: 12))
+                        }
+                    }
+                    .chartXScale(domain: 0...xMax)
+                    .chartYScale(domain: yMin...yMax)
+                    .frame(height: 200)
                     .padding(.horizontal)
                     .background(
                         RoundedRectangle(cornerRadius: 12)
@@ -248,7 +257,7 @@ struct statsView: View {
 
                 // Time labels
                 let hrLastTime = workout.heartRateData.map { $0.relativeTime }.max() ?? 0
-                let xMax = max(workout.duration, hrLastTime)
+                let xMax = hrLastTime > 0 ? hrLastTime : workout.duration
                 HStack {
                     Text("0:00")
                         .font(Font.custom("CallingCode-Regular", size: 14))
@@ -295,7 +304,7 @@ struct statsView: View {
 
                                 Rectangle()
                                     .fill(Color(hex: zone.color))
-                                    .frame(width: max(30, CGFloat(zone.percentage) * 1.8), height: 30)
+                                    .frame(width: zone.percentage > 0 ? max(8, CGFloat(zone.percentage) * 1.8) : 4, height: 30)
                                     .cornerRadius(6)
                             }
 
@@ -377,6 +386,7 @@ extension statsView {
             }
 
             // Time labels
+            let cadenceLastTime = workout.cadenceData.map { $0.relativeTime }.max() ?? 0
             HStack {
                 Text("0:00")
                     .font(Font.custom("CallingCode-Regular", size: 14))
@@ -384,7 +394,7 @@ extension statsView {
 
                 Spacer()
 
-                Text(workout.formattedDuration)
+                Text(formatTime(cadenceLastTime > 0 ? cadenceLastTime : workout.duration))
                     .font(Font.custom("CallingCode-Regular", size: 14))
                     .foregroundColor(.white.opacity(0.6))
             }
@@ -399,6 +409,8 @@ extension statsView {
         let maxCadence = workout.cadenceData.map { $0.cadence }.max() ?? 200
         let yAxisMin = max(0, floor(minCadence / 10) * 10 - 10)
         let yAxisMax = ceil(maxCadence / 10) * 10 + 10
+        let lastTime = workout.cadenceData.map { $0.relativeTime }.max() ?? workout.duration
+        let xMax = lastTime > 0 ? lastTime : workout.duration
 
         return VStack(spacing: 0) {
             Chart(workout.cadenceData, id: \.timestamp) { dataPoint in
@@ -433,7 +445,7 @@ extension statsView {
                         .font(Font.custom("CallingCode-Regular", size: 12))
                 }
             }
-            .chartXScale(domain: 0...(workout.duration))
+            .chartXScale(domain: 0...xMax)
             .chartYScale(domain: yAxisMin...yAxisMax)
             .frame(height: 200)
             .padding(.horizontal)
