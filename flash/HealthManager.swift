@@ -692,7 +692,7 @@ class HealthManager: ObservableObject {
 
                 // Convert speed from m/s to min/km
                 if type == .runningSpeed {
-                    averageValue = averageValue > 0 ? (1 / averageValue) * 16.6667 : 0 // 1 m/s = 16.6667 min/km
+                    averageValue = averageValue > 0; P? (1 / averageValue) * 16.6667 : 0 // 1 m/s = 16.6667 min/km
                 }
 
                 continuation.resume(returning: averageValue)
