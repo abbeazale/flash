@@ -77,7 +77,7 @@ class HealthManager: ObservableObject {
 
             Task {
                 await requestAuthorization()
-                await loadAllData()
+                await loadHomeData()
             }
         }
 
@@ -121,47 +121,11 @@ class HealthManager: ObservableObject {
         }
     }
 
-    private func loadAllData() async {
-        // Calculate weekly summary FIRST (it's faster now)
+    private func loadHomeData() async {
         await calculateWeeklySummary()
 
-        // Then load runs data
-        let initialData = await fetchRunningWorkouts(
-            startDate: .distantPast,
-            limit: initialLoadLimit
-        )
-
         await MainActor.run {
-            self.allRuns = initialData.sorted { $0.date > $1.date }
-            self.isLoading = false // Stop loading indicator after initial load
-        }
-
-        // Load remaining data in background
-        Task {
-            await self.loadRemainingData()
-        }
-    }
-
-    private func loadRemainingData() async {
-        await MainActor.run {
-            self.isLoadingMore = true
-        }
-
-        let allData = await fetchRunningWorkouts(
-            startDate: .distantPast,
-            limit: 0 // 0 means no limit
-        )
-
-        await MainActor.run {
-            self.allRuns = allData.sorted { $0.date > $1.date }
-            self.isLoadingMore = false
-        }
-
-        // Save to Firebase in background
-        Task {
-            for runData in allData {
-                await self.firebaseManager.saveRunningData(runData)
-            }
+            self.isLoading = false
         }
     }
 
@@ -256,7 +220,7 @@ class HealthManager: ObservableObject {
     private func processWorkout(_ workout: HKWorkout) async -> RunningData? {
         let stepCount = await getStepCount(for: workout)
         let totalTimeMinutes = workout.duration / 60
-        let cadence = stepCount / totalTimeMinutes
+        let cadence = totalTimeMinutes > 0 ? stepCount / totalTimeMinutes : 0
 
         var elevationGain: Double = 0.0
         if let elevationQuantity = workout.metadata?[HKMetadataKeyElevationAscended] as? HKQuantity {
@@ -304,8 +268,97 @@ class HealthManager: ObservableObject {
             pacePerKM: pacePerKM,
             heartRateData: heartRateData,
             cadenceData: cadenceData,
-            heartRateZones: heartRateZones
+            heartRateZones: heartRateZones,
+            healthKitUUID: workout.uuid
         )
+    }
+
+    private func makeRunSummary(from workout: HKWorkout) -> RunningData {
+        let distance = workout.totalDistance?.doubleValue(for: .meter()) ?? 0.0
+        let duration = workout.duration
+        let formattedDuration = formatDuration(duration)
+        let formattedPace = formatPace(duration: duration, distance: distance)
+        let activeCalories = workout.totalEnergyBurned?.doubleValue(for: .kilocalorie()) ?? 0.0
+
+        return RunningData(
+            date: workout.startDate,
+            distance: distance,
+            cadence: 0,
+            power: 0,
+            pace: 0,
+            formattedPace: formattedPace,
+            heartRate: 0,
+            strideLength: 0,
+            verticalOscillation: 0,
+            groundContactTime: 0,
+            duration: duration,
+            formattedDuration: formattedDuration,
+            elevation: 0,
+            activeCalories: activeCalories,
+            route: [],
+            formatDuration: formattedDuration,
+            pacePerKM: [],
+            heartRateData: [],
+            cadenceData: [],
+            heartRateZones: [],
+            healthKitUUID: workout.uuid
+        )
+    }
+
+    private func fetchRunningWorkoutSummaries(startDate: Date, limit: Int) async -> [RunningData] {
+        let workoutType = HKSampleType.workoutType()
+        let timePredicate = HKQuery.predicateForSamples(withStart: startDate, end: Date())
+        let workoutPredicate = HKQuery.predicateForWorkouts(with: .running)
+        let predicate = NSCompoundPredicate(andPredicateWithSubpredicates: [timePredicate, workoutPredicate])
+        let queryLimit = limit > 0 ? limit : HKObjectQueryNoLimit
+
+        let workouts = try? await withCheckedThrowingContinuation { (continuation: CheckedContinuation<[HKWorkout], Error>) in
+            let query = HKSampleQuery(
+                sampleType: workoutType,
+                predicate: predicate,
+                limit: queryLimit,
+                sortDescriptors: [NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: false)]
+            ) { _, samples, error in
+                if let error = error {
+                    continuation.resume(throwing: error)
+                } else {
+                    continuation.resume(returning: samples as? [HKWorkout] ?? [])
+                }
+            }
+            healthStore.execute(query)
+        }
+
+        return workouts?.map(makeRunSummary) ?? []
+    }
+
+    private func fetchWorkout(uuid: UUID) async -> HKWorkout? {
+        let workoutType = HKSampleType.workoutType()
+        let predicate = HKQuery.predicateForObject(with: uuid)
+
+        return await withCheckedContinuation { continuation in
+            let query = HKSampleQuery(
+                sampleType: workoutType,
+                predicate: predicate,
+                limit: 1,
+                sortDescriptors: nil
+            ) { _, samples, _ in
+                continuation.resume(returning: samples?.first as? HKWorkout)
+            }
+            healthStore.execute(query)
+        }
+    }
+
+    func hydrateRunDetails(_ run: RunningData) async -> RunningData {
+        guard run.route.isEmpty,
+              run.heartRateData.isEmpty,
+              run.cadenceData.isEmpty,
+              run.pacePerKM.isEmpty,
+              let healthKitUUID = run.healthKitUUID,
+              let workout = await fetchWorkout(uuid: healthKitUUID) else {
+            return run
+        }
+
+        return await processWorkout(workout) ?? run
     }
 
     //get the runs from the firestore database on launch with pagination
@@ -347,7 +400,7 @@ class HealthManager: ObservableObject {
     // Method to load more runs (called when user scrolls to bottom)
     func loadMoreRuns() async {
         guard hasMoreRuns && !isFetchingMore else { return }
-        await fetchRunningWorkoutsFirestore(loadMore: true)
+        await loadRunSummaryPage(limit: allRuns.count + initialLoadLimit)
     }
 
     func startPeriodSync() {
@@ -639,7 +692,7 @@ class HealthManager: ObservableObject {
 
                 // Convert speed from m/s to min/km
                 if type == .runningSpeed {
-                    averageValue = (1 / averageValue) * 16.6667 // 1 m/s = 16.6667 min/km
+                    averageValue = averageValue > 0 ? (1 / averageValue) * 16.6667 : 0 // 1 m/s = 16.6667 min/km
                 }
 
                 continuation.resume(returning: averageValue)
@@ -730,7 +783,7 @@ class HealthManager: ObservableObject {
     ///returns the pace for the whole run
     func formatPace(duration: TimeInterval, distance: Double) -> String {
         guard distance > 0 else {
-            return "u didnt even run"
+            return "N/A"
         }
 
         let pace = duration / distance // pace in seconds per meter
@@ -744,7 +797,7 @@ class HealthManager: ObservableObject {
 
     ///formatted pace for each split
     func formatPace(_ pace: Double) -> String {
-        guard pace.isFinite && !pace.isNaN else {
+        guard pace.isFinite && !pace.isNaN && pace > 0 else {
             return "N/A"
         }
 
@@ -869,7 +922,7 @@ class HealthManager: ObservableObject {
         // Calculate total distance, total duration, and average pace
         let totalDistance = currentWeekWorkouts.reduce(0.0) { $0 + $1.distance } / 1000 // Convert to kilometers
         let totalDuration = currentWeekWorkouts.reduce(0.0) { $0 + $1.duration } / 60 // Convert to minutes
-        let averagePace = totalDuration > 0 ? totalDuration / totalDistance : 0.0 // min/km
+        let averagePace = totalDistance > 0 ? totalDuration / totalDistance : 0.0 // min/km
 
         let totalDurationSeconds = currentWeekWorkouts.reduce(0.0) { $0 + $1.duration }
         let runTimeFormatted = self.formatDuration(totalDurationSeconds)
@@ -932,15 +985,26 @@ extension HealthManager {
 
     ///fetches workouts with pagination - loads initial batch quickly
     func lottaRuns() async {
-        // First, try to load from Firebase (faster)
-        await fetchRunningWorkoutsFirestore(loadMore: false)
+        await loadRunSummaryPage(limit: initialLoadLimit)
+    }
 
-        // If no data from Firebase, fall back to HealthKit
-        if allRuns.isEmpty {
-            let runningData = await fetchRunningWorkouts(startDate: .distantPast, limit: initialLoadLimit)
-            await MainActor.run {
-                self.allRuns = runningData
-            }
+    func loadRunSummaryPage(limit: Int) async {
+        guard !isFetchingMore else { return }
+
+        await MainActor.run {
+            self.isFetchingMore = true
+            self.isLoadingMore = !self.allRuns.isEmpty
+        }
+
+        let requestedLimit = max(initialLoadLimit, limit)
+        let summaries = await fetchRunningWorkoutSummaries(startDate: .distantPast, limit: requestedLimit + 1)
+        let visibleSummaries = Array(summaries.prefix(requestedLimit))
+
+        await MainActor.run {
+            self.allRuns = visibleSummaries
+            self.hasMoreRuns = summaries.count > requestedLimit
+            self.isFetchingMore = false
+            self.isLoadingMore = false
         }
     }
 }

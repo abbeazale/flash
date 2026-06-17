@@ -16,7 +16,7 @@ struct detailsView: View {
         let runs = manager.allRuns
         let totalDistance = runs.reduce(0.0) { $0 + $1.distance } / 1000 // Convert to km
         let totalDuration = runs.reduce(0.0) { $0 + $1.duration }
-        let averagePace = totalDuration / 60 / totalDistance // Convert to min/km
+        let averagePace = totalDistance > 0 ? totalDuration / 60 / totalDistance : 0 // Convert to min/km
         
         return (totalDistance, totalDuration, averagePace)
     }
@@ -127,7 +127,7 @@ struct detailsView: View {
     
     // Helper function to format pace
     private func formatPace(_ pace: Double) -> String {
-        guard pace.isFinite && !pace.isNaN else {
+        guard pace.isFinite && !pace.isNaN && pace > 0 else {
             return "N/A"
         }
         let minutes = Int(pace)

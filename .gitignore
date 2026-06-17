@@ -1,5 +1,4 @@
 .sentryclirc
-flash/GoogleService-Info.plist
 
 # Xcode build artifacts
 DerivedData/
