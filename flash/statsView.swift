@@ -347,18 +347,20 @@ extension statsView {
 
                 Spacer()
 
-                if let maxCadence = workout.cadenceData.map({ $0.cadence }).max(),
-                   let minCadence = workout.cadenceData.map({ $0.cadence }).min() {
+                let cadenceValues = workout.cadenceData.map { $0.cadence }
+                if let maxCadence = cadenceValues.max(),
+                   let minCadence = cadenceValues.min() {
+                    let averageCadence = cadenceValues.average()
                     VStack(alignment: .trailing, spacing: 2) {
                         Text("\(Int(maxCadence)) spm")
                             .font(Font.custom("CallingCode-Regular", size: 14))
-                            .foregroundColor(Color("AccentBlue"))
-                        Text("Avg: \(Int(workout.cadence)) spm")
+                            .foregroundColor(.blue)
+                        Text("Avg: \(Int(averageCadence)) spm")
                             .font(Font.custom("CallingCode-Regular", size: 14))
-                            .foregroundColor(Color("AccentBlue").opacity(0.8))
+                            .foregroundColor(.blue.opacity(0.8))
                         Text("\(Int(minCadence)) spm")
                             .font(Font.custom("CallingCode-Regular", size: 14))
-                            .foregroundColor(Color("AccentBlue").opacity(0.6))
+                            .foregroundColor(.blue.opacity(0.6))
                     }
                 }
             }
@@ -447,8 +449,9 @@ extension statsView {
             }
             .chartXScale(domain: 0...xMax)
             .chartYScale(domain: yAxisMin...yAxisMax)
-            .frame(height: 200)
-            .padding(.horizontal)
+            .frame(height: 190)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
             .background(
                 RoundedRectangle(cornerRadius: 12)
                     .fill(Color.white.opacity(0.05))
