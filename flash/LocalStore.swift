@@ -210,3 +210,29 @@ final class RunnerProfile {
         return 190
     }
 }
+
+@Model
+final class PersonalRecord {
+    @Attribute(.unique) var key: String
+    var value: Double
+    var runUUID: UUID
+    var date: Date
+    var computedAt: Date
+    var isNew: Bool
+
+    init(
+        key: String,
+        value: Double,
+        runUUID: UUID,
+        date: Date,
+        computedAt: Date = Date(),
+        isNew: Bool = false
+    ) {
+        self.key = key
+        self.value = value
+        self.runUUID = runUUID
+        self.date = date
+        self.computedAt = computedAt
+        self.isNew = isNew
+    }
+}

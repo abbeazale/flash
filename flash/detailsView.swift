@@ -56,6 +56,17 @@ struct detailsView: View {
                 
                 VStack(spacing: 15) {
                     NavigationLink {
+                        PRView()
+                    } label: {
+                        Text("Personal Records")
+                            .font(Font.custom("CallingCode-Regular", size: 24))
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.gray.opacity(0.2))
+                            .cornerRadius(8)
+                    }
+
+                    NavigationLink {
                         TrendsView()
                     } label: {
                         Text("Trends")
