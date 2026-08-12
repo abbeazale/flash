@@ -27,7 +27,7 @@ struct RunListPage: View {
         }
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(Color.black, for: .navigationBar)
+        .toolbarBackground(Color.flashBackground, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
     }
 }

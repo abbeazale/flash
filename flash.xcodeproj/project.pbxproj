@@ -3,42 +3,14 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 56;
+	objectVersion = 70;
 	objects = {
 
 /* Begin PBXBuildFile section */
-		266793FD2E0A41BE00E7CCB8 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 266793FC2E0A41BE00E7CCB8 /* GoogleService-Info.plist */; };
-		266793FE2E0A41BE00E7CCB8 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 266793FC2E0A41BE00E7CCB8 /* GoogleService-Info.plist */; };
-		266793FF2E0A41BE00E7CCB8 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 266793FC2E0A41BE00E7CCB8 /* GoogleService-Info.plist */; };
-		266794032E0A761D00E7CCB8 /* RunsListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 266794022E0A761D00E7CCB8 /* RunsListView.swift */; };
-		267778A32BC8D4BD0026FA5F /* GraphData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 267778A22BC8D4BD0026FA5F /* GraphData.swift */; };
-		267778A62BC8D76B0026FA5F /* HealthManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 267778A52BC8D76B0026FA5F /* HealthManager.swift */; };
-		267778AA2BC9D6C50026FA5F /* WeeklySummery.swift in Sources */ = {isa = PBXBuildFile; fileRef = 267778A92BC9D6C50026FA5F /* WeeklySummery.swift */; };
-		267778AC2BCF4B5C0026FA5F /* runsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 267778AB2BCF4B5C0026FA5F /* runsView.swift */; };
-		26890F642BF885D400275777 /* DetailedRun.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26890F632BF885D400275777 /* DetailedRun.swift */; };
-		268D8C052C08E0C2006C2670 /* statsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 268D8C042C08E0C2006C2670 /* statsView.swift */; };
 		26A59C612CEEEEE700A88DC1 /* (null) in Frameworks */ = {isa = PBXBuildFile; };
 		26A59C622CEEEEE700A88DC1 /* (null) in Frameworks */ = {isa = PBXBuildFile; };
-		26A59C662CF063AA00A88DC1 /* detailsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26A59C652CF063AA00A88DC1 /* detailsView.swift */; };
-		26B3DF802BC08D7400B5DCB8 /* flashApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26B3DF7F2BC08D7400B5DCB8 /* flashApp.swift */; };
-		26B3DF822BC08D7400B5DCB8 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26B3DF812BC08D7400B5DCB8 /* ContentView.swift */; };
-		26B3DF842BC08D7600B5DCB8 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 26B3DF832BC08D7600B5DCB8 /* Assets.xcassets */; };
-		26B3DF872BC08D7600B5DCB8 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 26B3DF862BC08D7600B5DCB8 /* Preview Assets.xcassets */; };
-		26B3DF912BC08D7600B5DCB8 /* flashTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26B3DF902BC08D7600B5DCB8 /* flashTests.swift */; };
 		26B3DF9B2BC08D7600B5DCB8 /* flashUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26B3DF9A2BC08D7600B5DCB8 /* flashUITests.swift */; };
 		26B3DF9D2BC08D7600B5DCB8 /* flashUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26B3DF9C2BC08D7600B5DCB8 /* flashUITestsLaunchTests.swift */; };
-		26B3DFAA2BC0FB1400B5DCB8 /* CallingCode-Regular.otf in Resources */ = {isa = PBXBuildFile; fileRef = 26B3DFA92BC0F9D400B5DCB8 /* CallingCode-Regular.otf */; };
-		26B3DFAB2BC0FB1500B5DCB8 /* CallingCode-Regular.otf in Resources */ = {isa = PBXBuildFile; fileRef = 26B3DFA92BC0F9D400B5DCB8 /* CallingCode-Regular.otf */; };
-		26B3DFAC2BC0FB4300B5DCB8 /* CallingCode-Regular.otf in Resources */ = {isa = PBXBuildFile; fileRef = 26B3DFA92BC0F9D400B5DCB8 /* CallingCode-Regular.otf */; };
-		26DB9C732C70FA3A00EC4FE1 /* models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26DB9C722C70FA3500EC4FE1 /* models.swift */; };
-		26E550B32BFE4DDC004291E0 /* MapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26E550B22BFE4DDC004291E0 /* MapView.swift */; };
-		26EA4C782C024EFB002A522C /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = 26EA4C772C024EFB002A522C /* FirebaseAnalytics */; };
-		26EA4C7A2C024EFB002A522C /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 26EA4C792C024EFB002A522C /* FirebaseAuth */; };
-		26EA4C7C2C024EFB002A522C /* FirebaseDatabase in Frameworks */ = {isa = PBXBuildFile; productRef = 26EA4C7B2C024EFB002A522C /* FirebaseDatabase */; };
-		26EA4C7E2C024EFB002A522C /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 26EA4C7D2C024EFB002A522C /* FirebaseFirestore */; };
-		26EA4C802C02B015002A522C /* FirebaseManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26EA4C7F2C02B015002A522C /* FirebaseManager.swift */; };
-		26EA4C812C02B015002A522C /* FirebaseManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26EA4C7F2C02B015002A522C /* FirebaseManager.swift */; };
-		26EA4C822C02B015002A522C /* FirebaseManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26EA4C7F2C02B015002A522C /* FirebaseManager.swift */; };
 		A4B94918AC054CDE9138C639 /* Sentry in Frameworks */ = {isa = PBXBuildFile; productRef = BBE78868AE644863AC1EA5C4 /* Sentry */; };
 /* End PBXBuildFile section */
 
@@ -60,42 +32,33 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		266793FC2E0A41BE00E7CCB8 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
-		266794022E0A761D00E7CCB8 /* RunsListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunsListView.swift; sourceTree = "<group>"; };
-		267778A22BC8D4BD0026FA5F /* GraphData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GraphData.swift; sourceTree = "<group>"; };
-		267778A42BC8D5E70026FA5F /* flash.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = flash.entitlements; sourceTree = "<group>"; };
-		267778A52BC8D76B0026FA5F /* HealthManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthManager.swift; sourceTree = "<group>"; };
-		267778A92BC9D6C50026FA5F /* WeeklySummery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeeklySummery.swift; sourceTree = "<group>"; };
-		267778AB2BCF4B5C0026FA5F /* runsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = runsView.swift; sourceTree = "<group>"; };
-		26890F632BF885D400275777 /* DetailedRun.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailedRun.swift; sourceTree = "<group>"; };
-		268D8C042C08E0C2006C2670 /* statsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = statsView.swift; sourceTree = "<group>"; };
-		26A59C652CF063AA00A88DC1 /* detailsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = detailsView.swift; sourceTree = "<group>"; };
 		26B3DF7C2BC08D7400B5DCB8 /* flash.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = flash.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		26B3DF7F2BC08D7400B5DCB8 /* flashApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = flashApp.swift; sourceTree = "<group>"; };
-		26B3DF812BC08D7400B5DCB8 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
-		26B3DF832BC08D7600B5DCB8 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		26B3DF862BC08D7600B5DCB8 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		26B3DF8C2BC08D7600B5DCB8 /* flashTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = flashTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		26B3DF902BC08D7600B5DCB8 /* flashTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = flashTests.swift; sourceTree = "<group>"; };
 		26B3DF962BC08D7600B5DCB8 /* flashUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = flashUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		26B3DF9A2BC08D7600B5DCB8 /* flashUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = flashUITests.swift; sourceTree = "<group>"; };
 		26B3DF9C2BC08D7600B5DCB8 /* flashUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = flashUITestsLaunchTests.swift; sourceTree = "<group>"; };
-		26B3DFA92BC0F9D400B5DCB8 /* CallingCode-Regular.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "CallingCode-Regular.otf"; sourceTree = "<group>"; };
-		26B3DFAD2BC0FBB900B5DCB8 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
-		26DB9C722C70FA3500EC4FE1 /* models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = models.swift; sourceTree = "<group>"; };
-		26E550B22BFE4DDC004291E0 /* MapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapView.swift; sourceTree = "<group>"; };
-		26EA4C7F2C02B015002A522C /* FirebaseManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirebaseManager.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		26F1A0012FE7A2C000000001 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 26B3DF7B2BC08D7400B5DCB8 /* flash */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		26B3DF7E2BC08D7400B5DCB8 /* flash */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (26F1A0012FE7A2C000000001 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = flash; sourceTree = "<group>"; };
+		26B3DF8F2BC08D7600B5DCB8 /* flashTests */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = flashTests; sourceTree = "<group>"; };
+/* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		26B3DF792BC08D7400B5DCB8 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				26EA4C7C2C024EFB002A522C /* FirebaseDatabase in Frameworks */,
-				26EA4C7E2C024EFB002A522C /* FirebaseFirestore in Frameworks */,
-				26EA4C782C024EFB002A522C /* FirebaseAnalytics in Frameworks */,
-				26EA4C7A2C024EFB002A522C /* FirebaseAuth in Frameworks */,
 				A4B94918AC054CDE9138C639 /* Sentry in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -140,48 +103,6 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
-		26B3DF7E2BC08D7400B5DCB8 /* flash */ = {
-			isa = PBXGroup;
-			children = (
-				26DB9C722C70FA3500EC4FE1 /* models.swift */,
-				267778A42BC8D5E70026FA5F /* flash.entitlements */,
-				26B3DFAD2BC0FBB900B5DCB8 /* Info.plist */,
-				26B3DF7F2BC08D7400B5DCB8 /* flashApp.swift */,
-				26B3DF812BC08D7400B5DCB8 /* ContentView.swift */,
-				26B3DF832BC08D7600B5DCB8 /* Assets.xcassets */,
-				26B3DFA92BC0F9D400B5DCB8 /* CallingCode-Regular.otf */,
-				26B3DF852BC08D7600B5DCB8 /* Preview Content */,
-				267778A22BC8D4BD0026FA5F /* GraphData.swift */,
-				267778A52BC8D76B0026FA5F /* HealthManager.swift */,
-				266793FC2E0A41BE00E7CCB8 /* GoogleService-Info.plist */,
-				267778A92BC9D6C50026FA5F /* WeeklySummery.swift */,
-				267778AB2BCF4B5C0026FA5F /* runsView.swift */,
-				26890F632BF885D400275777 /* DetailedRun.swift */,
-				26E550B22BFE4DDC004291E0 /* MapView.swift */,
-				26EA4C7F2C02B015002A522C /* FirebaseManager.swift */,
-				268D8C042C08E0C2006C2670 /* statsView.swift */,
-				26A59C652CF063AA00A88DC1 /* detailsView.swift */,
-				266794022E0A761D00E7CCB8 /* RunsListView.swift */,
-			);
-			path = flash;
-			sourceTree = "<group>";
-		};
-		26B3DF852BC08D7600B5DCB8 /* Preview Content */ = {
-			isa = PBXGroup;
-			children = (
-				26B3DF862BC08D7600B5DCB8 /* Preview Assets.xcassets */,
-			);
-			path = "Preview Content";
-			sourceTree = "<group>";
-		};
-		26B3DF8F2BC08D7600B5DCB8 /* flashTests */ = {
-			isa = PBXGroup;
-			children = (
-				26B3DF902BC08D7600B5DCB8 /* flashTests.swift */,
-			);
-			path = flashTests;
-			sourceTree = "<group>";
-		};
 		26B3DF992BC08D7600B5DCB8 /* flashUITests */ = {
 			isa = PBXGroup;
 			children = (
@@ -214,12 +135,11 @@
 			);
 			dependencies = (
 			);
+			fileSystemSynchronizedGroups = (
+				26B3DF7E2BC08D7400B5DCB8 /* flash */,
+			);
 			name = flash;
 			packageProductDependencies = (
-				26EA4C772C024EFB002A522C /* FirebaseAnalytics */,
-				26EA4C792C024EFB002A522C /* FirebaseAuth */,
-				26EA4C7B2C024EFB002A522C /* FirebaseDatabase */,
-				26EA4C7D2C024EFB002A522C /* FirebaseFirestore */,
 				BBE78868AE644863AC1EA5C4 /* Sentry */,
 			);
 			productName = flash;
@@ -238,6 +158,9 @@
 			);
 			dependencies = (
 				26B3DF8E2BC08D7600B5DCB8 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				26B3DF8F2BC08D7600B5DCB8 /* flashTests */,
 			);
 			name = flashTests;
 			productName = flashTests;
@@ -295,7 +218,6 @@
 			);
 			mainGroup = 26B3DF732BC08D7400B5DCB8;
 			packageReferences = (
-				26EA4C752C023F8F002A522C /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 				E340D52599F942A1998AA4F3 /* XCRemoteSwiftPackageReference "sentry-cocoa" */,
 			);
 			productRefGroup = 26B3DF7D2BC08D7400B5DCB8 /* Products */;
@@ -314,10 +236,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				26B3DF872BC08D7600B5DCB8 /* Preview Assets.xcassets in Resources */,
-				266793FE2E0A41BE00E7CCB8 /* GoogleService-Info.plist in Resources */,
-				26B3DFAA2BC0FB1400B5DCB8 /* CallingCode-Regular.otf in Resources */,
-				26B3DF842BC08D7600B5DCB8 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -325,8 +243,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				26B3DFAB2BC0FB1500B5DCB8 /* CallingCode-Regular.otf in Resources */,
-				266793FD2E0A41BE00E7CCB8 /* GoogleService-Info.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -334,8 +250,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				26B3DFAC2BC0FB4300B5DCB8 /* CallingCode-Regular.otf in Resources */,
-				266793FF2E0A41BE00E7CCB8 /* GoogleService-Info.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -364,19 +278,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				26B3DF822BC08D7400B5DCB8 /* ContentView.swift in Sources */,
-				26E550B32BFE4DDC004291E0 /* MapView.swift in Sources */,
-				26DB9C732C70FA3A00EC4FE1 /* models.swift in Sources */,
-				267778A32BC8D4BD0026FA5F /* GraphData.swift in Sources */,
-				26EA4C802C02B015002A522C /* FirebaseManager.swift in Sources */,
-				26A59C662CF063AA00A88DC1 /* detailsView.swift in Sources */,
-				268D8C052C08E0C2006C2670 /* statsView.swift in Sources */,
-				267778AC2BCF4B5C0026FA5F /* runsView.swift in Sources */,
-				26B3DF802BC08D7400B5DCB8 /* flashApp.swift in Sources */,
-				267778A62BC8D76B0026FA5F /* HealthManager.swift in Sources */,
-				267778AA2BC9D6C50026FA5F /* WeeklySummery.swift in Sources */,
-				26890F642BF885D400275777 /* DetailedRun.swift in Sources */,
-				266794032E0A761D00E7CCB8 /* RunsListView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -384,8 +285,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				26EA4C812C02B015002A522C /* FirebaseManager.swift in Sources */,
-				26B3DF912BC08D7600B5DCB8 /* flashTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -393,7 +292,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				26EA4C822C02B015002A522C /* FirebaseManager.swift in Sources */,
 				26B3DF9B2BC08D7600B5DCB8 /* flashUITests.swift in Sources */,
 				26B3DF9D2BC08D7600B5DCB8 /* flashUITestsLaunchTests.swift in Sources */,
 			);
@@ -728,14 +626,6 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		26EA4C752C023F8F002A522C /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/firebase/firebase-ios-sdk.git";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 10.26.0;
-			};
-		};
 		E340D52599F942A1998AA4F3 /* XCRemoteSwiftPackageReference "sentry-cocoa" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/getsentry/sentry-cocoa/";
@@ -747,26 +637,6 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		26EA4C772C024EFB002A522C /* FirebaseAnalytics */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 26EA4C752C023F8F002A522C /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
-			productName = FirebaseAnalytics;
-		};
-		26EA4C792C024EFB002A522C /* FirebaseAuth */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 26EA4C752C023F8F002A522C /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
-			productName = FirebaseAuth;
-		};
-		26EA4C7B2C024EFB002A522C /* FirebaseDatabase */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 26EA4C752C023F8F002A522C /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
-			productName = FirebaseDatabase;
-		};
-		26EA4C7D2C024EFB002A522C /* FirebaseFirestore */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 26EA4C752C023F8F002A522C /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
-			productName = FirebaseFirestore;
-		};
 		BBE78868AE644863AC1EA5C4 /* Sentry */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = E340D52599F942A1998AA4F3 /* XCRemoteSwiftPackageReference "sentry-cocoa" */;

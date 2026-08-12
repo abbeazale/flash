@@ -104,7 +104,7 @@ struct DetailedRun: View {
         .font(Font.custom("CallingCode-Regular", size: 70))
         .padding()
         .navigationTitle("Workout Details")
-        .toolbarBackground(Color.black, for: .navigationBar)
+        .toolbarBackground(Color.flashBackground, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
         
         .onAppear {

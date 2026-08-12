@@ -5,6 +5,9 @@ DerivedData/
 build/
 build.xcresult/
 
+# Personal project notes (never commit or package with the app)
+/docs/
+
 # User-specific Xcode files
 *.xcuserstate
 *.xcuserdatad

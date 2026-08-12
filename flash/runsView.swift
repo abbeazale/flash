@@ -16,7 +16,7 @@ struct runsView: View {
     
     var body: some View {
         ZStack{
-            Color(red: 54 / 255, green: 46 / 255, blue: 64/255)
+            Color.flashBackground
                 .ignoresSafeArea()
             VStack{
                 Text("runs")

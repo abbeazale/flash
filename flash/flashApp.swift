@@ -5,17 +5,16 @@
 //  Created by abbe on 2024-04-05.
 //
 
-import SwiftUI
 import Sentry
-
-import FirebaseCore
+import SwiftData
+import SwiftUI
 
 @main
 struct flashApp: App {
     @StateObject private var manager = HealthManager()
 
     init() {
-        FirebaseApp.configure()
+        LegacyStorageCleaner.removeFirebaseCacheIfNeeded()
         configureSentry()
         configureNavigationBarAppearance()
     }
@@ -24,15 +23,8 @@ struct flashApp: App {
         WindowGroup {
             ContentView()
                 .environmentObject(manager)
-                /*.onAppear {
-                    // Start periodic sync when the app appears
-                    manager.startPeriodSync()
-                }
-                .onDisappear {
-                    // Stop periodic sync when the app disappears
-                    manager.stopSync()
-            } */
         }
+        .modelContainer(for: [CachedRunSummary.self])
     }
 }
 

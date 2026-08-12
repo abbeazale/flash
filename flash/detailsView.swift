@@ -23,7 +23,7 @@ struct detailsView: View {
     
     var body: some View {
         ZStack{
-            Color(red: 54 / 255, green: 46 / 255, blue: 64/255)
+            Color.flashBackground
                 .ignoresSafeArea()
             VStack(alignment: .leading, spacing: 20) {
                 VStack{
@@ -113,7 +113,7 @@ struct detailsView: View {
             .padding()
             .foregroundColor(.white)
         }
-        .toolbarBackground(Color.black, for: .navigationBar)
+        .toolbarBackground(Color.flashBackground, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
     }
     

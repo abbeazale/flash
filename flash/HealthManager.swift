@@ -8,7 +8,6 @@
 import Foundation
 import HealthKit
 import CoreLocation
-import FirebaseFirestore
 
 extension Calendar {
     static let gregorian = Calendar(identifier: .iso8601)
@@ -36,7 +35,6 @@ extension Date {
 class HealthManager: ObservableObject {
 
     let healthStore = HKHealthStore()
-    let firebaseManager = FirebaseManager()
 
     //@published makes it readable for the whole file
     //total km for the week
@@ -53,17 +51,15 @@ class HealthManager: ObservableObject {
     //data points for runs
     @Published var weeklyRunSummery = [WeeklyRunData]()
 
-    //timer for syncing new runs
-    private var syncTimer: Timer?
-
     // Add new property to track if we're loading more data
     @Published var isLoadingMore = false
     private let initialLoadLimit = 20
 
-    // Pagination state for Firebase
-    private var lastFirebaseDocument: DocumentSnapshot?
     @Published var hasMoreRuns = true
     private var isFetchingMore = false
+
+    @Published private(set) var healthKitAuthorizationFinished = false
+    @Published private(set) var healthKitAuthorizationSucceeded = false
 
     // Cache for weekly summary
     private var cachedWeeklySummaryDate: Date?
@@ -76,12 +72,16 @@ class HealthManager: ObservableObject {
             loadCachedWeeklySummary()
 
             Task {
-                await requestAuthorization()
+                let authorizationSucceeded = await requestAuthorization()
+                await MainActor.run {
+                    self.healthKitAuthorizationSucceeded = authorizationSucceeded
+                    self.healthKitAuthorizationFinished = true
+                }
                 await loadHomeData()
             }
         }
 
-    private func requestAuthorization() async {
+    private func requestAuthorization() async -> Bool {
         let healthTypes: Set = [
             HKQuantityType(.distanceWalkingRunning),
             HKQuantityType(.runningSpeed),
@@ -116,8 +116,10 @@ class HealthManager: ObservableObject {
                 }
             }
             print("Authorization successful: \(success)")
+            return success
         } catch {
             print("Error requesting authorization: \(error.localizedDescription)")
+            return false
         }
     }
 
@@ -167,54 +169,6 @@ class HealthManager: ObservableObject {
         }
 
         healthStore.execute(query)
-    }
-
-    func fetchRunningWorkouts(startDate: Date, limit: Int = 0) async -> [RunningData] {
-        let workoutType = HKSampleType.workoutType()
-        let timePredicate = HKQuery.predicateForSamples(withStart: startDate, end: Date())
-        let workoutPredicate = HKQuery.predicateForWorkouts(with: .running)
-        let predicate = NSCompoundPredicate(andPredicateWithSubpredicates: [timePredicate, workoutPredicate])
-
-        let workouts = try? await withCheckedThrowingContinuation { (continuation: CheckedContinuation<[HKWorkout], Error>) in
-            let query = HKSampleQuery(
-                sampleType: workoutType,
-                predicate: predicate,
-                limit: limit, // Use the limit parameter
-                sortDescriptors: [NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: false)]
-            ) { _, samples, error in
-                if let error = error {
-                    continuation.resume(throwing: error)
-                } else if let workouts = samples as? [HKWorkout], !workouts.isEmpty {
-                    continuation.resume(returning: workouts)
-                } else {
-                    continuation.resume(returning: [])
-                }
-            }
-            healthStore.execute(query)
-        }
-
-        guard let workouts = workouts, !workouts.isEmpty else {
-            print("No workouts found")
-            return []
-        }
-
-        let runningDataArray = await withTaskGroup(of: RunningData?.self) { group in
-            for workout in workouts {
-                group.addTask {
-                    await self.processWorkout(workout)
-                }
-            }
-
-            var results: [RunningData] = []
-            for await result in group {
-                if let runningData = result {
-                    results.append(runningData)
-                }
-            }
-            return results.sorted { $0.date > $1.date }
-        }
-
-        return runningDataArray
     }
 
     private func processWorkout(_ workout: HKWorkout) async -> RunningData? {
@@ -361,81 +315,11 @@ class HealthManager: ObservableObject {
         return await processWorkout(workout) ?? run
     }
 
-    //get the runs from the firestore database on launch with pagination
-    func fetchRunningWorkoutsFirestore(loadMore: Bool = false) async {
-        // Prevent multiple simultaneous fetches
-        guard !isFetchingMore else { return }
-
-        await MainActor.run {
-            self.isFetchingMore = true
-            if loadMore {
-                self.isLoadingMore = true
-            } else {
-                self.isLoading = true
-            }
-        }
-
-        let result = await firebaseManager.fetchRunningData(
-            limit: 20,
-            startAfter: loadMore ? lastFirebaseDocument : nil
-        )
-
-        await MainActor.run {
-            if loadMore {
-                // Append new runs to existing ones
-                self.allRuns.append(contentsOf: result.runs)
-            } else {
-                // Replace with new runs
-                self.allRuns = result.runs
-            }
-
-            self.lastFirebaseDocument = result.lastDocument
-            self.hasMoreRuns = result.hasMore
-            self.isFetchingMore = false
-            self.isLoadingMore = false
-            self.isLoading = false
-        }
-    }
-
     // Method to load more runs (called when user scrolls to bottom)
     func loadMoreRuns() async {
         guard hasMoreRuns && !isFetchingMore else { return }
         await loadRunSummaryPage(limit: allRuns.count + initialLoadLimit)
     }
-
-    func startPeriodSync() {
-        // Calls the timer function every hour
-        syncTimer = Timer.scheduledTimer(withTimeInterval: 3600, repeats: true) { [weak self] _ in
-            guard let self = self else { return }
-            Task {
-                await self.fetchAndSyncWorkouts()
-            }
-        }
-    }
-
-    //method to get new workouts and save it to the database
-    private func fetchAndSyncWorkouts() async {
-        let newWorkouts = await fetchRunningWorkouts(startDate: .distantPast)
-
-        // Filter workouts that are already saved
-        let existingWorkoutDates = Set(allRuns.map { $0.date })
-        let newWorkoutsToSave = newWorkouts.filter { !existingWorkoutDates.contains($0.date) }
-
-        // Save new workouts to Firebase
-        for workout in newWorkoutsToSave {
-            await firebaseManager.saveRunningData(workout)
-        }
-
-        // Refresh local data with new data
-        await fetchRunningWorkoutsFirestore()
-    }
-
-    ///method to stop the periodic syncing
-    func stopSync(){
-        syncTimer?.invalidate()
-        syncTimer = nil
-    }
-
 
     private func unit(for type: HKQuantityTypeIdentifier) -> HKUnit {
         switch type {
