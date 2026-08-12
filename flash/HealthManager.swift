@@ -171,7 +171,7 @@ class HealthManager: ObservableObject {
         healthStore.execute(query)
     }
 
-    private func processWorkout(_ workout: HKWorkout) async -> RunningData? {
+    private func processWorkout(_ workout: HKWorkout, maxHR: Double) async -> RunningData? {
         let stepCount = await getStepCount(for: workout)
         let totalTimeMinutes = workout.duration / 60
         let cadence = totalTimeMinutes > 0 ? stepCount / totalTimeMinutes : 0
@@ -194,7 +194,11 @@ class HealthManager: ObservableObject {
         let heartRateData = await fetchHeartRateTimeSeries(for: workout)
         let cadenceData = await calculateCadenceFromSteps(for: workout)
 
-        let heartRateZones = calculateHeartRateZones(heartRateData: heartRateData, averageHR: heartRate)
+        let heartRateZones = calculateHeartRateZones(
+            heartRateData: heartRateData,
+            averageHR: heartRate,
+            maxHR: maxHR
+        )
 
         let formattedDuration = formatDuration(workout.duration)
         let distance = workout.totalDistance?.doubleValue(for: .meter()) ?? 0.0
@@ -302,7 +306,7 @@ class HealthManager: ObservableObject {
         }
     }
 
-    func hydrateRunDetails(_ run: RunningData) async -> RunningData {
+    func hydrateRunDetails(_ run: RunningData, maxHR: Double) async -> RunningData {
         guard run.route.isEmpty,
               run.heartRateData.isEmpty,
               run.cadenceData.isEmpty,
@@ -312,7 +316,7 @@ class HealthManager: ObservableObject {
             return run
         }
 
-        return await processWorkout(workout) ?? run
+        return await processWorkout(workout, maxHR: maxHR) ?? run
     }
 
     // Method to load more runs (called when user scrolls to bottom)
@@ -520,12 +524,12 @@ class HealthManager: ObservableObject {
 
     // Calculate heart rate zones based on time-series data
     // Standard zones: Zone 1 (50-60%), Zone 2 (60-70%), Zone 3 (70-80%), Zone 4 (80-90%), Zone 5 (90-100%)
-    private func calculateHeartRateZones(heartRateData: [HeartRateDataPoint], averageHR: Double) -> [HeartRateZone] {
-        guard !heartRateData.isEmpty else { return [] }
-
-        // Estimate max heart rate (220 - age), or use highest recorded HR * 1.05 as a fallback
-        let maxHR = heartRateData.map { $0.heartRate }.max() ?? averageHR
-        let estimatedMaxHR = max(maxHR * 1.05, 180.0) // Use 180 as minimum max HR
+    private func calculateHeartRateZones(
+        heartRateData: [HeartRateDataPoint],
+        averageHR: Double,
+        maxHR: Double
+    ) -> [HeartRateZone] {
+        guard !heartRateData.isEmpty, maxHR.isFinite, maxHR > 0 else { return [] }
 
         // Define zones based on % of max HR
         let zones = [
@@ -540,18 +544,18 @@ class HealthManager: ObservableObject {
         let totalDataPoints = Double(heartRateData.count)
 
         for zone in zones {
-            let minHR = estimatedMaxHR * zone.min
-            let maxHR = estimatedMaxHR * zone.max
+            let minHR = maxHR * zone.min
+            let maxZoneHR = maxHR * zone.max
 
             let pointsInZone = heartRateData.filter { dataPoint in
-                dataPoint.heartRate >= minHR && dataPoint.heartRate < maxHR
+                dataPoint.heartRate >= minHR && dataPoint.heartRate < maxZoneHR
             }.count
 
             let percentage = (Double(pointsInZone) / totalDataPoints) * 100.0
 
             let hrZone = HeartRateZone(
                 zone: zone.name,
-                range: "\(Int(minHR))-\(Int(maxHR)) bpm",
+                range: "\(Int(minHR))-\(Int(maxZoneHR)) bpm",
                 percentage: percentage.rounded(toPlaces: 1),
                 color: zone.color
             )
