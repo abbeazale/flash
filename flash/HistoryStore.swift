@@ -37,7 +37,7 @@ enum RunAggregator {
     }
 
     static func totals(_ runs: [RunSummaryData], in interval: DateInterval) -> RunTotals {
-        totals(runs.filter { interval.contains($0.date) })
+        totals(runs.filter { $0.date >= interval.start && $0.date < interval.end })
     }
 
     /// 12 ordered buckets (month 1...12) for the given year; empty months are zeroed.
@@ -64,6 +64,17 @@ enum RunAggregator {
         runs.filter { $0.distance >= 1000 }
             .sorted { $0.date < $1.date }
             .map { (date: $0.date, paceMinPerKm: ($0.duration / 60.0) / ($0.distance / 1000.0)) }
+    }
+}
+
+extension CachedRunSummary {
+    var aggregateData: RunSummaryData {
+        RunSummaryData(
+            date: date,
+            distance: distance,
+            duration: duration,
+            elevationGain: elevationGain
+        )
     }
 }
 
@@ -130,14 +141,7 @@ final class HistoryStore {
     private func allSummaries() throws -> [RunSummaryData] {
         let descriptor = FetchDescriptor<CachedRunSummary>(sortBy: [SortDescriptor(\.date)])
         let rows = try context.fetch(descriptor)
-        return rows.map {
-            RunSummaryData(
-                date: $0.date,
-                distance: $0.distance,
-                duration: $0.duration,
-                elevationGain: $0.elevationGain
-            )
-        }
+        return rows.map(\.aggregateData)
     }
 
     /// Cheap summary-only HealthKit query — no routes or HR sub-queries. `startDate == nil`
