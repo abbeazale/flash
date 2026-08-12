@@ -105,6 +105,12 @@ struct DetailedRun: View {
         }
         .font(Font.custom("CallingCode-Regular", size: 70))
         .padding()
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background {
+            Color.flashBackground
+                .ignoresSafeArea()
+        }
+        .foregroundStyle(.white)
         .navigationTitle("Workout Details")
         .toolbarBackground(Color.flashBackground, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)

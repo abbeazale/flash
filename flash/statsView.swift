@@ -327,7 +327,11 @@ struct statsView: View {
             .padding(.vertical)
             .frame(maxWidth: .infinity)
         }
-        .background(Color.flashBackground)
+        .background {
+            Color.flashBackground
+                .ignoresSafeArea()
+        }
+        .foregroundStyle(.white)
         .toolbarBackground(Color.flashBackground, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
         .onAppear {
