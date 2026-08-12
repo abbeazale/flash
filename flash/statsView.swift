@@ -19,19 +19,21 @@ struct statsView: View {
                 Text("Splits")
                     .font(Font.custom("CallingCode-Regular", size: 24))
                     .padding(.bottom, 16)
-                HStack {
+                HStack(spacing: 8) {
                     Text("Km")
-                        .padding(.bottom, 8)
+                        .frame(width: 20, alignment: .leading)
+
+                    Text("Pace")
+                        .frame(width: 60, alignment: .leading)
 
                     Spacer()
-                    Text("Pace")
                 }
                 .font(Font.custom("CallingCode-Regular", size: 18))
                 .padding(.horizontal)
                 .padding(.bottom, 8)
 
                 ForEach(workout.pacePerKM, id: \.kilometer) { segment in
-                    HStack {
+                    HStack(spacing: 8) {
                         Text("\(segment.kilometer)")
                             .font(Font.custom("CallingCode-Regular", size: 18))
                             .frame(width: 20, alignment: .leading)
