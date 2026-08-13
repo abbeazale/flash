@@ -8,11 +8,13 @@
 import SwiftUI
 import CoreLocation
 import MapKit
+import SwiftData
 
 
 //view when pressing on a run
 struct DetailedRun: View {
     @EnvironmentObject private var manager: HealthManager
+    @Query private var profiles: [RunnerProfile]
     let workout: RunningData
     @State private var displayedWorkout: RunningData
     @State private var region: MKCoordinateRegion
@@ -103,6 +105,12 @@ struct DetailedRun: View {
         }
         .font(Font.custom("CallingCode-Regular", size: 70))
         .padding()
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background {
+            Color.flashBackground
+                .ignoresSafeArea()
+        }
+        .foregroundStyle(.white)
         .navigationTitle("Workout Details")
         .toolbarBackground(Color.flashBackground, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
@@ -132,7 +140,10 @@ struct DetailedRun: View {
             isLoadingDetails = true
         }
 
-        let hydratedWorkout = await manager.hydrateRunDetails(displayedWorkout)
+        let maxHR = Double(
+            profiles.first { $0.key == RunnerProfile.singletonKey }?.effectiveMaxHR() ?? 190
+        )
+        let hydratedWorkout = await manager.hydrateRunDetails(displayedWorkout, maxHR: maxHR)
 
         await MainActor.run {
             displayedWorkout = hydratedWorkout

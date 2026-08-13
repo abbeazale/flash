@@ -5,41 +5,46 @@
 //  Created by abbe on 2024-11-21.
 //
 
+import SwiftData
 import SwiftUI
 
 struct detailsView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var manager: HealthManager
+    @Query(sort: \CachedRunSummary.date) private var cachedRuns: [CachedRunSummary]
+    @Query private var profiles: [RunnerProfile]
     
-    // Calculate yearly stats
-    private var yearlyStats: (distance: Double, duration: TimeInterval, pace: Double) {
-        let runs = manager.allRuns
-        let totalDistance = runs.reduce(0.0) { $0 + $1.distance } / 1000 // Convert to km
-        let totalDuration = runs.reduce(0.0) { $0 + $1.duration }
-        let averagePace = totalDistance > 0 ? totalDuration / 60 / totalDistance : 0 // Convert to min/km
-        
-        return (totalDistance, totalDuration, averagePace)
+    private var allTimeTotals: RunTotals {
+        RunAggregator.totals(cachedRuns.map(\.aggregateData))
+    }
+
+    private var unitPresentation: RunUnitPresentation {
+        RunUnitPresentation(
+            unit: profiles.first { $0.key == RunnerProfile.singletonKey }?.distanceUnit
+                ?? .kilometers
+        )
     }
     
     var body: some View {
         ZStack{
             Color.flashBackground
                 .ignoresSafeArea()
-            VStack(alignment: .leading, spacing: 20) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
                 VStack{
                     
-                    Text(formatDuration(yearlyStats.duration))
+                    Text(RunUnitPresentation.durationText(allTimeTotals.duration))
                         .frame(maxWidth: 300, alignment: .leading)
                     Text("Time")
                         .frame(maxWidth: 300, alignment: .leading)
                     
-                    Text(formatPace(yearlyStats.pace))
+                    Text(unitPresentation.paceText(fromMinutesPerKilometer: allTimeTotals.avgPace))
                         .frame(maxWidth: 300, alignment: .leading)
                         .padding(.top, 3)
                     Text("Average Pace")
                         .frame(maxWidth: 300, alignment: .leading)
                     
-                    Text(String(format: "%.2f km", yearlyStats.distance))
+                    Text(unitPresentation.distanceText(fromMeters: allTimeTotals.distance))
                         .frame(maxWidth: 300, alignment: .leading)
                         .padding(.top, 3)
                     Text("Total Distance")
@@ -49,9 +54,29 @@ struct detailsView: View {
                 .padding(.top, 30)
                 .padding(.horizontal)
                 
-                Spacer()
-    
                 VStack(spacing: 15) {
+                    NavigationLink {
+                        PRView()
+                    } label: {
+                        Text("Personal Records")
+                            .font(Font.custom("CallingCode-Regular", size: 24))
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.gray.opacity(0.2))
+                            .cornerRadius(8)
+                    }
+
+                    NavigationLink {
+                        TrendsView()
+                    } label: {
+                        Text("Trends")
+                            .font(Font.custom("CallingCode-Regular", size: 24))
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.gray.opacity(0.2))
+                            .cornerRadius(8)
+                    }
+
                     NavigationLink {
                         RunListPage(
                             title: "Longest Runs",
@@ -109,30 +134,13 @@ struct detailsView: View {
                 }
                 .padding(.horizontal)
                 .padding(.bottom, 30)
+                }
             }
             .padding()
             .foregroundColor(.white)
         }
         .toolbarBackground(Color.flashBackground, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
-    }
-    
-    // Helper function to format duration
-    private func formatDuration(_ duration: TimeInterval) -> String {
-        let hours = Int(duration) / 3600
-        let minutes = (Int(duration) % 3600) / 60
-        let seconds = Int(duration) % 60
-        return String(format: "%02d:%02d:%02d", hours, minutes, seconds)
-    }
-    
-    // Helper function to format pace
-    private func formatPace(_ pace: Double) -> String {
-        guard pace.isFinite && !pace.isNaN && pace > 0 else {
-            return "N/A"
-        }
-        let minutes = Int(pace)
-        let seconds = Int((pace - Double(minutes)) * 60)
-        return String(format: "%d:%02d/km", minutes, seconds)
     }
     
     // Helper function to convert pace string to seconds for sorting

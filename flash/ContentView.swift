@@ -23,17 +23,26 @@ struct ContentView: View {
                 // Show content immediately (with cached data if available)
                 VStack {
                     HStack {
-                        NavigationLink(destination: detailsView(), label: {
+                        NavigationLink(destination: SettingsView(), label: {
                             Image(systemName: "gearshape")
                                 .padding(.leading, 30)
                         })
+                        .accessibilityLabel("Settings")
                         Spacer()
                         Text("swipe to start a run")
                         Spacer()
-                        NavigationLink(destination: runsView(), label: {
-                            Image(systemName: "list.bullet")
-                                .padding(.trailing, 30)
-                        })
+                        HStack(spacing: 18) {
+                            NavigationLink(destination: detailsView(), label: {
+                                Image(systemName: "chart.xyaxis.line")
+                            })
+                            .accessibilityLabel("Analytics")
+
+                            NavigationLink(destination: runsView(), label: {
+                                Image(systemName: "list.bullet")
+                            })
+                            .accessibilityLabel("Run history")
+                        }
+                        .padding(.trailing, 30)
                     }
                     .opacity(0.30)
                     .padding(.top, -10)
