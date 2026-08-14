@@ -69,11 +69,15 @@ struct DetailedRun: View {
                 }
             }
             
-            Text("Distance: \(displayedWorkout.distance / 1000, specifier: "%.2f") km")
+            Text(
+                "Distance: \(unitPresentation.distanceText(fromMeters: displayedWorkout.distance))"
+            )
                 .font(Font.custom("CallingCode-Regular", size: 20))
             Text("Duration: \(displayedWorkout.formatDuration)")
                 .font(Font.custom("CallingCode-Regular", size: 20))
-            Text("Average Pace: \(displayedWorkout.formattedPace)")
+            Text(
+                "Average Pace: \(unitPresentation.paceText(fromMinutesPerKilometer: paceMinutesPerKilometer))"
+            )
                 .font(Font.custom("CallingCode-Regular", size: 20))
             
             HStack{
@@ -96,7 +100,11 @@ struct DetailedRun: View {
               
                 VStack{
                     Text("Elevation")
-                    Text(metricText(displayedWorkout.elevation))
+                    Text(
+                        displayedWorkout.elevation > 0
+                            ? unitPresentation.elevationText(fromMeters: displayedWorkout.elevation)
+                            : "N/A"
+                    )
                 }.frame(width: 100)
             }.font(Font.custom("CallingCode-Regular", size: 20))
                 //.frame(alignment: .trailing)
@@ -213,6 +221,16 @@ struct DetailedRun: View {
             unit: profiles.first { $0.key == RunnerProfile.singletonKey }?.distanceUnit
                 ?? .kilometers
         )
+    }
+
+    private var paceMinutesPerKilometer: Double {
+        guard displayedWorkout.distance.isFinite,
+              displayedWorkout.duration.isFinite,
+              displayedWorkout.distance > 0,
+              displayedWorkout.duration > 0 else {
+            return 0
+        }
+        return (displayedWorkout.duration / 60) / (displayedWorkout.distance / 1_000)
     }
 
     private func requestShare(_ action: RunShareAction) {

@@ -4,23 +4,43 @@
 //
 //  Created by abbe on 2024-05-30.
 //
-import SwiftUI
 import Charts
+import SwiftData
+import SwiftUI
 
 //stats of run
 struct statsView: View {
+    @EnvironmentObject private var manager: HealthManager
+    @Query private var profiles: [RunnerProfile]
     let workout: RunningData
     @State private var cachedElevationSegments: [Double] = []
 
+    private var unitPresentation: RunUnitPresentation {
+        RunUnitPresentation(
+            unit: profiles.first { $0.key == RunnerProfile.singletonKey }?.distanceUnit
+                ?? .kilometers
+        )
+    }
+
+    private var displayedSplits: [SegmentPace] {
+        guard !workout.route.isEmpty else { return workout.pacePerKM }
+        let segmentDistance = unitPresentation.unit == .miles ? 1_609.344 : 1_000
+        return manager.calculatePaceSegments(
+            route: workout.route,
+            segmentDistanceMeters: segmentDistance
+        )
+    }
+
     var body: some View {
         let _ = print("🔍 StatsView loaded - Cadence data count: \(workout.cadenceData.count)")
+        let splits = displayedSplits
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 Text("Splits")
                     .font(Font.custom("CallingCode-Regular", size: 24))
                     .padding(.bottom, 16)
                 HStack(spacing: 8) {
-                    Text("Km")
+                    Text(unitPresentation.distanceLabel)
                         .frame(width: 20, alignment: .leading)
 
                     Text("Pace")
@@ -32,7 +52,7 @@ struct statsView: View {
                 .padding(.horizontal)
                 .padding(.bottom, 8)
 
-                ForEach(workout.pacePerKM, id: \.kilometer) { segment in
+                ForEach(splits, id: \.kilometer) { segment in
                     HStack(spacing: 8) {
                         Text("\(segment.kilometer)")
                             .font(Font.custom("CallingCode-Regular", size: 18))
@@ -40,13 +60,20 @@ struct statsView: View {
 
 
 
-                        Text(segment.formattedPace)
+                        Text(
+                            unitPresentation.paceText(
+                                fromMinutesPerKilometer: segment.pace
+                            )
+                        )
                             .font(Font.custom("CallingCode-Regular", size: 18))
                             .frame(width: 60, alignment: .leading)
 
                         Rectangle()
                             .fill(Color.blue)
-                            .frame(width: self.barWidth(for: segment.pace), height: 20)
+                            .frame(
+                                width: self.barWidth(for: segment.pace, among: splits),
+                                height: 20
+                            )
                             .cornerRadius(4)
 
                     }
@@ -69,13 +96,15 @@ struct statsView: View {
                     if let maxElevation = elevations.max(),
                        let minElevation = elevations.min() {
                         VStack(alignment: .trailing, spacing: 2) {
-                            Text("\(Int(maxElevation))m")
+                            Text(unitPresentation.elevationText(fromMeters: maxElevation))
                                 .font(Font.custom("CallingCode-Regular", size: 14))
                                 .foregroundColor(.green)
-                            Text("Avg: \(Int(elevations.average()))m")
+                            Text(
+                                "Avg: \(unitPresentation.elevationText(fromMeters: elevations.average()))"
+                            )
                                 .font(Font.custom("CallingCode-Regular", size: 14))
                                 .foregroundColor(.green.opacity(0.8))
-                            Text("\(Int(minElevation))m")
+                            Text(unitPresentation.elevationText(fromMeters: minElevation))
                                 .font(Font.custom("CallingCode-Regular", size: 14))
                                 .foregroundColor(.green.opacity(0.6))
                         }
@@ -145,7 +174,9 @@ struct statsView: View {
                     HStack {
                         Image(systemName: "arrow.up.right")
                             .foregroundColor(.green)
-                        Text("Total Elevation Gain: \(Int(workout.elevation))m")
+                        Text(
+                            "Total Elevation Gain: \(unitPresentation.elevationText(fromMeters: workout.elevation))"
+                        )
                             .font(Font.custom("CallingCode-Regular", size: 16))
                     }
                     .padding(.horizontal)
@@ -472,8 +503,8 @@ extension statsView {
     }
 
     // MARK: - Helper Functions
-    private func barWidth(for pace: Double) -> CGFloat {
-        let maxPace = workout.pacePerKM.map { $0.pace }.max() ?? 1
+    private func barWidth(for pace: Double, among splits: [SegmentPace]) -> CGFloat {
+        let maxPace = splits.map(\.pace).max() ?? 1
         let maxWidth: CGFloat = 200 // Fixed width for bars
 
         return CGFloat((pace / maxPace) * Double(maxWidth))

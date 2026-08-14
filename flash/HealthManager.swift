@@ -344,42 +344,58 @@ class HealthManager: ObservableObject {
         }
     }
 
-    func calculatePacePerKM(route: [CLLocation], totalDuration: TimeInterval) -> [SegmentPace] {
-            guard !route.isEmpty else { return [] }
+    func calculatePacePerKM(route: [CLLocation], totalDuration _: TimeInterval) -> [SegmentPace] {
+        calculatePaceSegments(route: route, segmentDistanceMeters: 1_000)
+    }
 
-            var segmentPaces: [SegmentPace] = []
-            var currentKilometer = 1
-            var segmentDistance: Double = 0.0
-            var segmentTime: TimeInterval = 0.0
-            var lastLocation = route.first!
+    func calculatePaceSegments(
+        route: [CLLocation],
+        segmentDistanceMeters: Double
+    ) -> [SegmentPace] {
+        guard segmentDistanceMeters.isFinite, segmentDistanceMeters > 0 else { return [] }
+        guard !route.isEmpty else { return [] }
 
-            for location in route.dropFirst() {
-                let distance = location.distance(from: lastLocation)
-                segmentDistance += distance
-                segmentTime += location.timestamp.timeIntervalSince(lastLocation.timestamp)
+        var segmentPaces: [SegmentPace] = []
+        var currentSegment = 1
+        var segmentDistance: Double = 0.0
+        var segmentTime: TimeInterval = 0.0
+        var lastLocation = route.first!
 
-                if segmentDistance >= 1000 {
-                    let pace = segmentTime / 60 / (segmentDistance / 1000)
-                    let formattedPace = formatPace(pace)
-                    let segmentPace = SegmentPace(kilometer: currentKilometer, pace: pace, formattedPace: formattedPace)
-                    segmentPaces.append(segmentPace)
-                    currentKilometer += 1
-                    segmentDistance = 0.0
-                    segmentTime = 0.0
-                }
+        for location in route.dropFirst() {
+            let distance = location.distance(from: lastLocation)
+            segmentDistance += distance
+            segmentTime += location.timestamp.timeIntervalSince(lastLocation.timestamp)
 
-                lastLocation = location
-            }
-
-            if segmentDistance > 0 {
-                let pace = segmentTime / 60.0 / (segmentDistance / 1000)
+            if segmentDistance >= segmentDistanceMeters {
+                let pace = segmentTime / 60 / (segmentDistance / 1000)
                 let formattedPace = formatPace(pace)
-                let segmentPace = SegmentPace(kilometer: currentKilometer, pace: pace, formattedPace: formattedPace)
+                let segmentPace = SegmentPace(
+                    kilometer: currentSegment,
+                    pace: pace,
+                    formattedPace: formattedPace
+                )
                 segmentPaces.append(segmentPace)
+                currentSegment += 1
+                segmentDistance = 0.0
+                segmentTime = 0.0
             }
 
-            return segmentPaces
+            lastLocation = location
         }
+
+        if segmentDistance > 0 {
+            let pace = segmentTime / 60.0 / (segmentDistance / 1000)
+            let formattedPace = formatPace(pace)
+            let segmentPace = SegmentPace(
+                kilometer: currentSegment,
+                pace: pace,
+                formattedPace: formattedPace
+            )
+            segmentPaces.append(segmentPace)
+        }
+
+        return segmentPaces
+    }
 
     // Fetch heart rate data points over time during the workout
     private func fetchHeartRateTimeSeries(for workout: HKWorkout) async -> [HeartRateDataPoint] {

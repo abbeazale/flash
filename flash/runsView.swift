@@ -7,12 +7,21 @@
 
 import SwiftUI
 import HealthKit
+import SwiftData
 
 
 struct runsView: View {
     @EnvironmentObject var manager: HealthManager
+    @Query private var profiles: [RunnerProfile]
     @State private var hasLoadedInitialData = false
     @State private var scrollPosition: UUID?
+
+    private var unitPresentation: RunUnitPresentation {
+        RunUnitPresentation(
+            unit: profiles.first { $0.key == RunnerProfile.singletonKey }?.distanceUnit
+                ?? .kilometers
+        )
+    }
     
     var body: some View {
         ZStack{
@@ -33,7 +42,11 @@ struct runsView: View {
                                         .month(.wide)
                                         .weekday(.wide)))
                                     .font(.headline)
-                                    Text("\(workout.distance / 1000, specifier: "%.2f") km")
+                                    Text(
+                                        unitPresentation.distanceText(
+                                            fromMeters: workout.distance
+                                        )
+                                    )
                                         .font(.subheadline)
                                 }
                                 .padding()
@@ -77,4 +90,3 @@ struct runsView: View {
         }
     }
 }
-

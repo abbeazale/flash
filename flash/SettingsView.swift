@@ -140,12 +140,13 @@ struct SettingsView: View {
                     }
 
                     settingsCard(title: "Distance") {
-                        Picker("Preferred unit", selection: $draft.distanceUnit) {
+                        Picker("Preferred unit", selection: distanceUnitSelection) {
                             ForEach(PreferredDistanceUnit.allCases) { unit in
                                 Text(unit.title).tag(unit)
                             }
                         }
                         .pickerStyle(.segmented)
+                        .disabled(profile == nil)
                     }
 
                     if let validationMessage {
@@ -227,6 +228,16 @@ struct SettingsView: View {
         }
     }
 
+    private var distanceUnitSelection: Binding<PreferredDistanceUnit> {
+        Binding(
+            get: { draft.distanceUnit },
+            set: { unit in
+                draft.distanceUnit = unit
+                saveDistanceUnit(unit)
+            }
+        )
+    }
+
     @MainActor
     private func ensureProfileExists() {
         guard !hasLoadedProfile else { return }
@@ -273,6 +284,25 @@ struct SettingsView: View {
             isSaving = false
         } catch {
             statusMessage = error.localizedDescription
+            statusIsError = true
+        }
+    }
+
+    @MainActor
+    private func saveDistanceUnit(_ unit: PreferredDistanceUnit) {
+        guard let profile else { return }
+
+        let previousUnit = profile.distanceUnit
+        profile.distanceUnit = unit
+
+        do {
+            try modelContext.save()
+            statusMessage = "Distance unit updated."
+            statusIsError = false
+        } catch {
+            profile.distanceUnit = previousUnit
+            draft.distanceUnit = previousUnit
+            statusMessage = "Could not save distance unit: \(error.localizedDescription)"
             statusIsError = true
         }
     }

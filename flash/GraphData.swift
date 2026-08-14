@@ -6,8 +6,9 @@
 //
 
 import Foundation
-import SwiftUI
 import Charts
+import SwiftData
+import SwiftUI
 
 //data for the graph on the home page
 //day will be from apple health
@@ -21,6 +22,14 @@ struct WeeklyRunData: Identifiable {
 
 struct ChartsView: View {
     @EnvironmentObject var manager: HealthManager
+    @Query private var profiles: [RunnerProfile]
+
+    private var unitPresentation: RunUnitPresentation {
+        RunUnitPresentation(
+            unit: profiles.first { $0.key == RunnerProfile.singletonKey }?.distanceUnit
+                ?? .kilometers
+        )
+    }
     
     var body: some View {
         VStack {
@@ -32,7 +41,12 @@ struct ChartsView: View {
                     let dailyData = manager.weeklyRunSummery.first { Calendar.current.isDate($0.date, inSameDayAs: date) }
                     BarMark(
                         x: .value("Day", date.startOfWeekFormatted()),
-                        y: .value("Kilometers Ran", dailyData?.kmRan ?? 0)
+                        y: .value(
+                            "\(unitPresentation.unit.title) Ran",
+                            unitPresentation.distance(
+                                fromMeters: (dailyData?.kmRan ?? 0) * 1_000
+                            )
+                        )
                     )
                 }
             }
