@@ -19,10 +19,22 @@ struct DetailedRun: View {
     @State private var displayedWorkout: RunningData
     @State private var region: MKCoordinateRegion
     @State private var isLoadingDetails = false
+    @State private var hasFinishedDetailHydration: Bool
+    @State private var isPreparingShare = false
+    @State private var pendingShareAction: RunShareAction?
+    @State private var isShowingShareConfirmation = false
+    @State private var preparedShare: PreparedRunShare?
+    @State private var sharingAlert: RunSharingAlert?
         
         init(workout: RunningData) {
             self.workout = workout
             _displayedWorkout = State(initialValue: workout)
+            _hasFinishedDetailHydration = State(
+                initialValue: !workout.route.isEmpty
+                    || !workout.heartRateData.isEmpty
+                    || !workout.cadenceData.isEmpty
+                    || !workout.pacePerKM.isEmpty
+            )
             if let firstLocation = workout.route.first {
                 _region = State(initialValue: MKCoordinateRegion(
                     center: firstLocation.coordinate,
@@ -114,6 +126,75 @@ struct DetailedRun: View {
         .navigationTitle("Workout Details")
         .toolbarBackground(Color.flashBackground, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu {
+                    Button {
+                        requestShare(.card)
+                    } label: {
+                        Label("Share Run Card", systemImage: "photo")
+                    }
+                    .disabled(
+                        isLoadingDetails
+                            || !hasFinishedDetailHydration
+                            || isPreparingShare
+                    )
+
+                    Button {
+                        requestShare(.gpx)
+                    } label: {
+                        Label("Export GPX", systemImage: "map")
+                    }
+                    .disabled(
+                        isLoadingDetails
+                            || !hasFinishedDetailHydration
+                            || isPreparingShare
+                            || displayedWorkout.route.isEmpty
+                    )
+
+                    if hasFinishedDetailHydration
+                        && !isLoadingDetails
+                        && displayedWorkout.route.isEmpty {
+                        Text("GPX unavailable without a route")
+                    }
+                } label: {
+                    if isPreparingShare {
+                        ProgressView()
+                            .tint(.white)
+                    } else {
+                        Image(systemName: "square.and.arrow.up")
+                    }
+                }
+                .disabled(isPreparingShare)
+                .accessibilityLabel(isPreparingShare ? "Preparing share" : "Share run")
+            }
+        }
+        .confirmationDialog(
+            pendingShareAction?.confirmationTitle ?? "Share this run?",
+            isPresented: $isShowingShareConfirmation,
+            titleVisibility: .visible
+        ) {
+            if let pendingShareAction {
+                Button(pendingShareAction.actionTitle) {
+                    prepareShare(pendingShareAction)
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            if let pendingShareAction {
+                Text(pendingShareAction.privacyMessage)
+            }
+        }
+        .sheet(item: $preparedShare) { preparedShare in
+            PreparedRunShareView(preparedShare: preparedShare)
+        }
+        .alert(item: $sharingAlert) { alert in
+            Alert(
+                title: Text("Sharing Failed"),
+                message: Text(alert.message),
+                dismissButton: .default(Text("OK"))
+            )
+        }
         
         .onAppear {
             setRegionToFitRoute()
@@ -125,6 +206,52 @@ struct DetailedRun: View {
 
     private func metricText(_ value: Double) -> String {
         value > 0 ? String(format: "%.2f", value) : "N/A"
+    }
+
+    private var unitPresentation: RunUnitPresentation {
+        RunUnitPresentation(
+            unit: profiles.first { $0.key == RunnerProfile.singletonKey }?.distanceUnit
+                ?? .kilometers
+        )
+    }
+
+    private func requestShare(_ action: RunShareAction) {
+        guard !isPreparingShare else { return }
+        pendingShareAction = action
+        isShowingShareConfirmation = true
+    }
+
+    private func prepareShare(_ action: RunShareAction) {
+        guard !isPreparingShare else { return }
+        isPreparingShare = true
+        pendingShareAction = nil
+
+        Task { @MainActor in
+            do {
+                let result: PreparedRunShare
+                switch action {
+                case .card:
+                    let document = try await ShareCardRenderer.makeDocument(
+                        run: displayedWorkout,
+                        unitPresentation: unitPresentation
+                    )
+                    result = .card(document)
+                case .gpx:
+                    let document = try GPXDocument(
+                        route: displayedWorkout.route,
+                        heartRate: displayedWorkout.heartRateData,
+                        name: "Run on \(displayedWorkout.date.formatted(date: .abbreviated, time: .shortened))",
+                        date: displayedWorkout.date
+                    )
+                    result = .gpx(document)
+                }
+
+                preparedShare = result
+            } catch {
+                sharingAlert = RunSharingAlert(message: error.localizedDescription)
+            }
+            isPreparingShare = false
+        }
     }
 
     private func loadWorkoutDetailsIfNeeded() async {
@@ -148,6 +275,7 @@ struct DetailedRun: View {
         await MainActor.run {
             displayedWorkout = hydratedWorkout
             isLoadingDetails = false
+            hasFinishedDetailHydration = true
             setRegionToFitRoute()
         }
     }
