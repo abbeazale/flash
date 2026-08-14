@@ -270,7 +270,9 @@ struct TrendsView: View {
                 .font(Font.custom("CallingCode-Regular", size: 24))
 
             if pacePoints.isEmpty {
-                Text("Run at least 1 km to start a pace trend.")
+                Text(
+                    "Run at least \(unitPresentation.distanceText(fromMeters: 1_000)) to start a pace trend."
+                )
                     .font(Font.custom("CallingCode-Regular", size: 14))
                     .foregroundStyle(.white.opacity(0.6))
             } else {
@@ -307,7 +309,9 @@ struct TrendsView: View {
                 }
                 .frame(height: 240)
 
-                Text("Minutes\(unitPresentation.paceLabel) • runs shorter than 1 km excluded")
+                Text(
+                    "Minutes\(unitPresentation.paceLabel) • runs shorter than \(unitPresentation.distanceText(fromMeters: 1_000)) excluded"
+                )
                     .font(Font.custom("CallingCode-Regular", size: 12))
                     .foregroundStyle(.white.opacity(0.6))
             }

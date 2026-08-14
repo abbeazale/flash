@@ -82,7 +82,7 @@ struct detailsView: View {
                             title: "Longest Runs",
                             runs: manager.allRuns.sorted { $0.distance > $1.distance },
                             metric: { run in
-                                String(format: "%.2f km", run.distance / 1000)
+                                unitPresentation.distanceText(fromMeters: run.distance)
                             }
                         )
                     } label: {
@@ -100,11 +100,15 @@ struct detailsView: View {
                             runs: manager.allRuns
                                 .filter { $0.distance >= 1000 } // Only runs ≥ 1 km
                                 .sorted { first, second in
-                                    let pace1 = paceToSeconds(first.formattedPace)
-                                    let pace2 = paceToSeconds(second.formattedPace)
+                                    let pace1 = paceMinutesPerKilometer(for: first)
+                                    let pace2 = paceMinutesPerKilometer(for: second)
                                     return pace1 < pace2
                                 },
-                            metric: { $0.formattedPace }
+                            metric: { run in
+                                unitPresentation.paceText(
+                                    fromMinutesPerKilometer: paceMinutesPerKilometer(for: run)
+                                )
+                            }
                         )
                     } label: {
                         Text("Fastest Runs")
@@ -143,15 +147,14 @@ struct detailsView: View {
         .toolbarColorScheme(.dark, for: .navigationBar)
     }
     
-    // Helper function to convert pace string to seconds for sorting
-    private func paceToSeconds(_ paceString: String) -> Double {
-        let components = paceString.split(separator: ":")
-        if components.count == 2,
-           let minutes = Double(components[0]),
-           let seconds = Double(components[1].prefix(2)) {
-            return minutes * 60 + seconds
+    private func paceMinutesPerKilometer(for run: RunningData) -> Double {
+        guard run.distance.isFinite,
+              run.duration.isFinite,
+              run.distance > 0,
+              run.duration > 0 else {
+            return .infinity
         }
-        return Double.infinity
+        return (run.duration / 60) / (run.distance / 1_000)
     }
 }
 
