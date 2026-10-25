@@ -18,6 +18,11 @@ struct detailsView: View {
         RunAggregator.totals(cachedRuns.map(\.aggregateData))
     }
 
+    // Full cached history, not the paged HealthManager list
+    private var allRuns: [RunningData] {
+        cachedRuns.map(RunSummaryAdapter.runningData(from:))
+    }
+
     private var unitPresentation: RunUnitPresentation {
         RunUnitPresentation(
             unit: profiles.first { $0.key == RunnerProfile.singletonKey }?.distanceUnit
@@ -80,7 +85,7 @@ struct detailsView: View {
                     NavigationLink {
                         RunListPage(
                             title: "Longest Runs",
-                            runs: manager.allRuns.sorted { $0.distance > $1.distance },
+                            runs: allRuns.sorted { $0.distance > $1.distance },
                             metric: { run in
                                 unitPresentation.distanceText(fromMeters: run.distance)
                             }
@@ -97,7 +102,7 @@ struct detailsView: View {
                     NavigationLink {
                         RunListPage(
                             title: "Fastest Runs",
-                            runs: manager.allRuns
+                            runs: allRuns
                                 .filter { $0.distance >= 1000 } // Only runs ≥ 1 km
                                 .sorted { first, second in
                                     let pace1 = paceMinutesPerKilometer(for: first)
@@ -122,7 +127,7 @@ struct detailsView: View {
                     NavigationLink {
                         RunListPage(
                             title: "Most Calories Burned",
-                            runs: manager.allRuns.sorted { $0.activeCalories > $1.activeCalories },
+                            runs: allRuns.sorted { $0.activeCalories > $1.activeCalories },
                             metric: { run in
                                 String(format: "%.0f cal", run.activeCalories)
                             }
@@ -155,42 +160,5 @@ struct detailsView: View {
             return .infinity
         }
         return (run.duration / 60) / (run.distance / 1_000)
-    }
-}
-
-struct RunListSheet: View {
-    @Environment(\.dismiss) var dismiss
-    let title: String
-    let runs: [RunningData]
-    let metric: (RunningData) -> String
-    
-    var body: some View {
-        NavigationView {
-            List(runs) { run in
-                NavigationLink(destination: DetailedRun(workout: run)) {
-                    HStack {
-                        VStack(alignment: .leading) {
-                            Text(run.date.formatted(.dateTime
-                                .day(.defaultDigits)
-                                .month(.wide)
-                                .weekday(.wide)))
-                            .font(Font.custom("CallingCode-Regular", size: 16))
-                        }
-                        Spacer()
-                        Text(metric(run))
-                            .font(Font.custom("CallingCode-Regular", size: 16))
-                    }
-                }
-            }
-            .navigationTitle(title)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") {
-                        dismiss()
-                    }
-                }
-            }
-        }
     }
 }
