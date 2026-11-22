@@ -11,9 +11,8 @@ import SwiftUI
 
 
 struct WeeklySummery: View {
-    @EnvironmentObject var manager: HealthManager
+    let summary: WeekSummary
     @Query private var profiles: [RunnerProfile]
-    @State var stats: Stats
 
     private var unitPresentation: RunUnitPresentation {
         RunUnitPresentation(
@@ -22,27 +21,25 @@ struct WeeklySummery: View {
         )
     }
 
-//weekly run summery array of data 
-
     var body: some View {
             VStack{
                
                 Text(
-                    "\(unitPresentation.distance(fromMeters: manager.weeklyRunDistance * 1_000), specifier: "%.2f")"
+                    "\(unitPresentation.distance(fromMeters: summary.totalKilometers * 1_000), specifier: "%.2f")"
                 )
                     .font(Font.custom("CallingCode-Regular", size: 96))
                 Text(unitPresentation.unit.title.lowercased())
                     .font(Font.custom("CallingCode-Regular", size: 16))
                     .opacity(0.30)
                 VStack{
-                    Text(String(manager.formattedRunTime))
+                    Text(summary.formattedDuration)
                         .frame(maxWidth: 300, alignment: .leading)
                     Text("time")
                         .frame(maxWidth: 300, alignment: .leading)
                     
                     Text(
                         unitPresentation.paceText(
-                            fromMinutesPerKilometer: manager.weeklyRunPace
+                            fromMinutesPerKilometer: summary.averagePace
                         )
                     )
                         .frame(maxWidth: 300, alignment: .leading)

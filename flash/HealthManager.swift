@@ -14,10 +14,6 @@ extension Calendar {
 }
 
 extension Date {
-    func startOfWeek(using calendar: Calendar = .gregorian) -> Date {
-        calendar.dateComponents([.calendar, .yearForWeekOfYear, .weekOfYear], from: self).date!
-    }
-
     func startOfYear(using calendar: Calendar = .gregorian) -> Date {
         calendar.dateComponents([.calendar, .yearForWeekOfYear], from: self).date!
     }
@@ -25,11 +21,6 @@ extension Date {
     func startOfMonth(using calendar: Calendar = .gregorian) -> Date {
         return Calendar.current.date(from: Calendar.current.dateComponents([.year, .month, .day], from: Calendar.current.startOfDay(for: self)))!
     }
-
-    func endOfWeek(using calendar: Calendar = .gregorian) -> Date {
-            let startOfWeek = self.startOfWeek(using: calendar)
-            return calendar.date(byAdding: .day, value: 6, to: startOfWeek)!
-        }
 }
 //info from health kit
 class HealthManager: ObservableObject {
@@ -37,19 +28,14 @@ class HealthManager: ObservableObject {
     let healthStore = HKHealthStore()
 
     //@published makes it readable for the whole file
-    //total km for the week
-    @Published var weeklyRunDistance: Double = 0
-    @Published var weeklyRunTime: Double = 0
-    @Published var weeklyRunPace: Double = 0
-    @Published var formattedRunTime: String = ""
-    @Published var formattedRunPace: String = ""
+    /// Totals for the current Monday-to-Sunday week.
+    @Published var thisWeek = WeekSummary.empty(weekStart: Date().startOfWeek())
+    /// Monday of the week of the oldest run. Nil until HealthKit answers.
+    @Published var firstRunWeekStart: Date?
     @Published var weeklyTimeRan = DateInterval()
     @Published var isLoading = true
     ///array of all runs
     @Published var allRuns = [RunningData]()
-
-    //data points for runs
-    @Published var weeklyRunSummery = [WeeklyRunData]()
 
     // Add new property to track if we're loading more data
     @Published var isLoadingMore = false
@@ -62,9 +48,8 @@ class HealthManager: ObservableObject {
     @Published private(set) var healthKitAuthorizationSucceeded = false
 
     // Cache for weekly summary
-    private var cachedWeeklySummaryDate: Date?
     private let userDefaults = UserDefaults.standard
-    private let weeklySummaryCacheKey = "weeklySummaryCache"
+    private let weeklySummaryCacheKey = "weekSummaryCache.mondayFirst"
 
     //initalize the health manager getting the km and pace
     init() {
@@ -125,50 +110,14 @@ class HealthManager: ObservableObject {
 
     private func loadHomeData() async {
         await calculateWeeklySummary()
+        let firstRunDate = await fetchFirstRunDate()
+        await MainActor.run {
+            self.firstRunWeekStart = firstRunDate?.startOfWeek()
+        }
 
         await MainActor.run {
             self.isLoading = false
         }
-    }
-
-    //data is fetched asynchronously
-    //gets the data ran for the week
-    func fetchWeeklyInfo(startDate: Date, completion: @escaping ([WeeklyRunData]) -> Void ) {
-        let distance = HKQuantityType(.distanceWalkingRunning)
-        //puts the two querys of within the last month and running
-        let interval = DateComponents(day: 1)
-
-        let query = HKStatisticsCollectionQuery(quantityType: distance, quantitySamplePredicate: nil, anchorDate: Date().startOfYear(), intervalComponents: interval)
-
-        query.initialResultsHandler = {query, result, error in
-            guard let result = result else {
-                completion([])
-                return
-            }
-
-            var totalD = [WeeklyRunData]()
-
-            result.enumerateStatistics(from: startDate, to: Date()) { statistics, stop in
-                totalD.append(WeeklyRunData(date: statistics.startDate, kmRan:
-                                                statistics.sumQuantity()?.doubleValue(for: .meterUnit(with: .kilo)) ?? 0.00))
-            }
-            completion(totalD)
-
-            //total distance
-            let td = totalD.map {$0.kmRan}
-
-            let sum = td.reduce(0, { x, y in
-                x + y
-            })
-            //print(sum)
-            DispatchQueue.main.async {
-                self.weeklyRunDistance = sum
-
-            }
-
-        }
-
-        healthStore.execute(query)
     }
 
     private func processWorkout(_ workout: HKWorkout, maxHR: Double) async -> RunningData? {
@@ -708,47 +657,31 @@ class HealthManager: ObservableObject {
     // Load cached weekly summary for instant UI
     private func loadCachedWeeklySummary() {
         guard let data = userDefaults.data(forKey: weeklySummaryCacheKey),
-              let cached = try? JSONDecoder().decode(WeeklySummaryCache.self, from: data) else {
+              let cached = try? JSONDecoder().decode(WeekSummary.self, from: data) else {
             return
         }
 
-        // Check if cache is from current week
-        let calendar = Calendar.current
-        let currentWeekStart = Date().startOfWeek()
-
-        if calendar.isDate(cached.weekStartDate, equalTo: currentWeekStart, toGranularity: .weekOfYear) {
-            // Cache is valid, use it immediately
-            self.weeklyRunDistance = cached.totalDistance
-            self.weeklyRunTime = cached.totalDuration
-            self.weeklyRunPace = cached.averagePace
-            self.formattedRunTime = cached.formattedTime
-            self.formattedRunPace = cached.formattedPace
-            self.weeklyRunSummery = cached.weeklyData
-            self.cachedWeeklySummaryDate = cached.weekStartDate
+        // Use the cache only when it is for the current week
+        if cached.weekStart == Date().startOfWeek() {
+            self.thisWeek = cached
         }
     }
 
     // Save weekly summary to cache
     private func cacheWeeklySummary() {
-        let cache = WeeklySummaryCache(
-            weekStartDate: Date().startOfWeek(),
-            totalDistance: weeklyRunDistance,
-            totalDuration: weeklyRunTime,
-            averagePace: weeklyRunPace,
-            formattedTime: formattedRunTime,
-            formattedPace: formattedRunPace,
-            weeklyData: weeklyRunSummery
-        )
-
-        if let encoded = try? JSONEncoder().encode(cache) {
+        if let encoded = try? JSONEncoder().encode(thisWeek) {
             userDefaults.set(encoded, forKey: weeklySummaryCacheKey)
         }
     }
 
     // OPTIMIZED: Fetch only basic workout info without expensive details
-    private func fetchBasicWorkouts(startDate: Date) async -> [(date: Date, distance: Double, duration: TimeInterval)] {
+    private func fetchBasicWorkouts(startDate: Date, endDate: Date) async -> [(date: Date, distance: Double, duration: TimeInterval)] {
         let workoutType = HKSampleType.workoutType()
-        let timePredicate = HKQuery.predicateForSamples(withStart: startDate, end: Date())
+        let timePredicate = HKQuery.predicateForSamples(
+            withStart: startDate,
+            end: endDate,
+            options: .strictStartDate
+        )
         let workoutPredicate = HKQuery.predicateForWorkouts(with: .running)
         let predicate = NSCompoundPredicate(andPredicateWithSubpredicates: [timePredicate, workoutPredicate])
 
@@ -782,76 +715,44 @@ class HealthManager: ObservableObject {
         }
     }
 
+    /// Totals for the Monday-to-Sunday week that starts at `weekStart`.
+    func weekSummary(for weekStart: Date) async -> WeekSummary {
+        let empty = WeekSummary.empty(weekStart: weekStart)
+        // Fetch only basic workout info (no routes, heart rate, etc.)
+        let workouts = await fetchBasicWorkouts(startDate: weekStart, endDate: empty.weekEnd())
+        return WeekSummary.make(
+            weekStart: weekStart,
+            runs: workouts.map {
+                WeekRun(date: $0.date, distanceMeters: $0.distance, duration: $0.duration)
+            }
+        )
+    }
+
     func calculateWeeklySummary() async {
-        let startDate = Date().startOfWeek()
+        let summary = await weekSummary(for: Date().startOfWeek())
 
-        // OPTIMIZED: Fetch only basic workout info (no routes, heart rate, etc.)
-        let basicWorkouts = await fetchBasicWorkouts(startDate: startDate)
-
-        // Filter workouts to include only those from the current week
-        let calendar = Calendar.current
-        let currentWeekWorkouts = basicWorkouts.filter { calendar.isDate($0.date, equalTo: startDate, toGranularity: .weekOfYear) }
-
-        // Calculate total distance, total duration, and average pace
-        let totalDistance = currentWeekWorkouts.reduce(0.0) { $0 + $1.distance } / 1000 // Convert to kilometers
-        let totalDuration = currentWeekWorkouts.reduce(0.0) { $0 + $1.duration } / 60 // Convert to minutes
-        let averagePace = totalDistance > 0 ? totalDuration / totalDistance : 0.0 // min/km
-
-        let totalDurationSeconds = currentWeekWorkouts.reduce(0.0) { $0 + $1.duration }
-        let runTimeFormatted = self.formatDuration(totalDurationSeconds)
-        let runPaceFormatted = self.formatPace(averagePace)
-
-        // Create WeeklyRunData for each day in the current week
-        let weeklyRunData = currentWeekWorkouts.map { workout in
-            WeeklyRunData(date: workout.date, kmRan: (workout.distance / 1000).rounded(toPlaces: 2))
-        }
-
-        // Update @Published properties
         await MainActor.run {
-            self.weeklyRunDistance = totalDistance.rounded(toPlaces: 2)
-            self.weeklyRunTime = totalDuration.rounded(toPlaces: 2)
-            self.weeklyRunPace = averagePace.rounded(toPlaces: 2)
-            self.weeklyRunSummery = weeklyRunData
-            self.formattedRunTime = runTimeFormatted
-            self.formattedRunPace = runPaceFormatted
-
+            self.thisWeek = summary
             // Cache the results for instant loading next time
             self.cacheWeeklySummary()
         }
     }
-}
 
-// Cache structure for weekly summary
-private struct WeeklySummaryCache: Codable {
-    let weekStartDate: Date
-    let totalDistance: Double
-    let totalDuration: Double
-    let averagePace: Double
-    let formattedTime: String
-    let formattedPace: String
-    let weeklyData: [WeeklyRunData]
-}
-
-// Make WeeklyRunData Codable for caching
-extension WeeklyRunData: Codable {
-    enum CodingKeys: String, CodingKey {
-        case date, kmRan
-    }
-
-    init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        let date = try container.decode(Date.self, forKey: .date)
-        let kmRan = try container.decode(Double.self, forKey: .kmRan)
-        self.init(date: date, kmRan: kmRan)
-    }
-
-    func encode(to encoder: Encoder) throws {
-        var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(date, forKey: .date)
-        try container.encode(kmRan, forKey: .kmRan)
+    /// Start date of the oldest running workout in HealthKit.
+    func fetchFirstRunDate() async -> Date? {
+        await withCheckedContinuation { (continuation: CheckedContinuation<Date?, Never>) in
+            let query = HKSampleQuery(
+                sampleType: HKSampleType.workoutType(),
+                predicate: HKQuery.predicateForWorkouts(with: .running),
+                limit: 1,
+                sortDescriptors: [NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: true)]
+            ) { _, samples, _ in
+                continuation.resume(returning: samples?.first?.startDate)
+            }
+            healthStore.execute(query)
+        }
     }
 }
-
 
 //chart data
 extension HealthManager {
@@ -879,14 +780,6 @@ extension HealthManager {
             self.isFetchingMore = false
             self.isLoadingMore = false
         }
-    }
-}
-
-extension Date {
-    func startOfWeekM() -> Date {
-        let calendar = Calendar.current
-        let components = calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: self)
-        return calendar.date(from: components)!.addingTimeInterval(60*60*24) // Adjust to start from Monday
     }
 }
 
