@@ -18,6 +18,8 @@ struct RoutePlannerView: View {
     @State private var loadFailed = false
     @State private var focus: RouteMapFocus?
     @State private var fitRequest = 0
+    /// A saved walking route fits its waypoints on open, then fits again once the walking paths load.
+    @State private var fitWhenPathsLoad = false
 
     init(route: SavedRoute? = nil) { self.route = route }
 
@@ -107,6 +109,11 @@ struct RoutePlannerView: View {
             .onAppear(perform: load)
             .onChange(of: draft.definition) { _, definition in
                 if case .walking(let waypoints) = definition { preview.update(waypoints: waypoints) }
+            }
+            .onChange(of: preview.state) { _, state in
+                guard fitWhenPathsLoad, case .ready = state else { return }
+                fitWhenPathsLoad = false
+                fitRequest += 1
             }
             .onDisappear { preview.cancel() }
         }
@@ -202,6 +209,7 @@ struct RoutePlannerView: View {
             if let route { draft = RouteDraft(name: route.name, definition: try route.definition()) }
             initialDraft = draft
             if isWalking { preview.update(waypoints: points) }
+            fitWhenPathsLoad = route != nil && isWalking
             fitRequest += 1
         } catch {
             loadFailed = true
