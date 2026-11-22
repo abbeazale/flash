@@ -5,6 +5,7 @@
 //  Created by abbe on 2024-05-30.
 //
 import Charts
+import MapKit
 import SwiftData
 import SwiftUI
 
@@ -14,6 +15,7 @@ struct statsView: View {
     @Query private var profiles: [RunnerProfile]
     let workout: RunningData
     @State private var cachedElevationSegments: [Double] = []
+    @State private var selectedSplit: Int?
 
     private var unitPresentation: RunUnitPresentation {
         RunUnitPresentation(
@@ -22,23 +24,48 @@ struct statsView: View {
         )
     }
 
-    private var displayedSplits: [SegmentPace] {
-        guard !workout.route.isEmpty else { return workout.pacePerKM }
-        let segmentDistance = unitPresentation.unit == .miles ? 1_609.344 : 1_000
-        return manager.calculatePaceSegments(
-            route: workout.route,
-            segmentDistanceMeters: segmentDistance
-        )
+    private var splitDistanceMeters: Double {
+        unitPresentation.unit == .miles ? 1_609.344 : 1_000
+    }
+
+    /// Splits with the route index range each one covers, from the same function that
+    /// calculates their pace.
+    private var routeSplits: [RouteSplit] {
+        RouteAnalyzer.splits(route: workout.route, segmentDistanceMeters: splitDistanceMeters)
     }
 
     var body: some View {
-        let _ = print("🔍 StatsView loaded - Cadence data count: \(workout.cadenceData.count)")
-        let splits = displayedSplits
+        let routeSplits = routeSplits
+        let splits = routeSplits.isEmpty
+            ? workout.pacePerKM
+            : routeSplits.map {
+                SegmentPace(kilometer: $0.number, pace: $0.paceMinutesPerKilometer, formattedPace: "")
+            }
+        let highlightedRange = selectedSplit.flatMap { number in
+            routeSplits.first { $0.number == number }?.indexRange
+        }
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 Text("Splits")
                     .font(Font.custom("CallingCode-Regular", size: 24))
                     .padding(.bottom, 16)
+
+                if !workout.route.isEmpty {
+                    MapView(
+                        route: workout.route,
+                        region: .constant(MKCoordinateRegion()),
+                        highlightedRange: highlightedRange
+                    )
+                    .frame(height: 220)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .padding(.bottom, 8)
+
+                    Text(selectedSplit.map { "Showing split \($0). Tap it again to clear." }
+                         ?? "Tap a split to show it on the map.")
+                        .font(Font.custom("CallingCode-Regular", size: 12))
+                        .foregroundStyle(.white.opacity(0.6))
+                        .padding(.bottom, 16)
+                }
                 HStack(spacing: 8) {
                     Text(unitPresentation.distanceLabel)
                         .frame(width: 20, alignment: .leading)
@@ -76,9 +103,21 @@ struct statsView: View {
                             )
                             .cornerRadius(4)
 
+                        Spacer(minLength: 0)
                     }
                     .padding(.horizontal)
-                    .padding(.bottom, 8)
+                    .padding(.vertical, 4)
+                    .background(
+                        RoundedRectangle(cornerRadius: 6)
+                            .fill(Color.yellow.opacity(selectedSplit == segment.kilometer ? 0.18 : 0))
+                    )
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        guard routeSplits.contains(where: { $0.number == segment.kilometer }) else { return }
+                        selectedSplit = selectedSplit == segment.kilometer ? nil : segment.kilometer
+                    }
+                    .accessibilityAddTraits(routeSplits.isEmpty ? [] : .isButton)
+                    .padding(.bottom, 4)
                 }
             }
             .padding()
@@ -216,71 +255,7 @@ struct statsView: View {
 
                 // Heart Rate Chart
                 if !workout.heartRateData.isEmpty {
-                    let hrLastTime = workout.heartRateData.map { $0.relativeTime }.max() ?? 0
-                    let xMax = hrLastTime > 0 ? hrLastTime : workout.duration
-                    let hrValues = workout.heartRateData.map { $0.heartRate }
-                    let hrMax = hrValues.max() ?? 0
-                    let hrMin = hrValues.min() ?? 0
-                    let yMax = (ceil(hrMax / 10) * 10) + 10
-                    let yMin = max(0, floor(hrMin / 10) * 10 - 10)
-                    Chart {
-                        ForEach(Array(workout.heartRateData.enumerated()), id: \.offset) { index, dataPoint in
-                            LineMark(
-                                x: .value("Time", dataPoint.relativeTime),
-                                y: .value("Heart Rate", dataPoint.heartRate)
-                            )
-                            .foregroundStyle(
-                                LinearGradient(
-                                    gradient: Gradient(colors: [.red, .orange]),
-                                    startPoint: .leading,
-                                    endPoint: .trailing
-                                )
-                            )
-                            .lineStyle(StrokeStyle(lineWidth: 2))
-
-                            AreaMark(
-                                x: .value("Time", dataPoint.relativeTime),
-                                yStart: .value("Baseline", yMin),
-                                yEnd: .value("Heart Rate", dataPoint.heartRate)
-                            )
-                            .foregroundStyle(
-                                LinearGradient(
-                                    gradient: Gradient(colors: [
-                                        Color.red.opacity(0.3),
-                                        Color.orange.opacity(0.1)
-                                    ]),
-                                    startPoint: .top,
-                                    endPoint: .bottom
-                                )
-                            )
-                        }
-                    }
-                    .chartXAxis {
-                        AxisMarks(position: .bottom) { _ in
-                            AxisGridLine().foregroundStyle(Color.white.opacity(0.1))
-                            AxisTick().foregroundStyle(.clear)
-                            AxisValueLabel()
-                                .foregroundStyle(.white.opacity(0.6))
-                                .font(Font.custom("CallingCode-Regular", size: 12))
-                        }
-                    }
-                    .chartYAxis {
-                        AxisMarks(position: .leading) { _ in
-                            AxisGridLine().foregroundStyle(Color.white.opacity(0.1))
-                            AxisValueLabel()
-                                .foregroundStyle(.white.opacity(0.6))
-                                .font(Font.custom("CallingCode-Regular", size: 12))
-                        }
-                    }
-                    .chartXScale(domain: 0...xMax)
-                    .chartYScale(domain: yMin...yMax)
-                    .frame(height: 200)
-                    .padding(.horizontal)
-                    .background(
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(Color.white.opacity(0.05))
-                    )
-                    .padding(.horizontal)
+                    HeartRateChart(data: workout.heartRateData, duration: workout.duration)
                 } else {
                     Text("No heart rate data available")
                         .font(Font.custom("CallingCode-Regular", size: 14))
@@ -444,62 +419,7 @@ extension statsView {
     }
 
     private var cadenceChart: some View {
-        let minCadence = workout.cadenceData.map { $0.cadence }.min() ?? 0
-        let maxCadence = workout.cadenceData.map { $0.cadence }.max() ?? 200
-        let yAxisMin = max(0, floor(minCadence / 10) * 10 - 10)
-        let yAxisMax = ceil(maxCadence / 10) * 10 + 10
-        let lastTime = workout.cadenceData.map { $0.relativeTime }.max() ?? workout.duration
-        let xMax = lastTime > 0 ? lastTime : workout.duration
-
-        return VStack(spacing: 0) {
-            Chart(workout.cadenceData, id: \.timestamp) { dataPoint in
-                LineMark(
-                    x: .value("Time", dataPoint.relativeTime),
-                    y: .value("Cadence", dataPoint.cadence)
-                )
-                .foregroundStyle(Color.blue)
-                .lineStyle(StrokeStyle(lineWidth: 3))
-
-                AreaMark(
-                    x: .value("Time", dataPoint.relativeTime),
-                    yStart: .value("Baseline", yAxisMin),
-                    yEnd: .value("Cadence", dataPoint.cadence)
-                )
-                .foregroundStyle(Color.blue.opacity(0.3))
-            }
-            .chartXAxis {
-                AxisMarks(position: .bottom) { _ in
-                    AxisGridLine().foregroundStyle(Color.white.opacity(0.1))
-                    AxisTick().foregroundStyle(.clear)
-                    AxisValueLabel()
-                        .foregroundStyle(.white.opacity(0.6))
-                        .font(Font.custom("CallingCode-Regular", size: 12))
-                }
-            }
-            .chartYAxis {
-                AxisMarks(position: .leading) { _ in
-                    AxisGridLine().foregroundStyle(Color.white.opacity(0.1))
-                    AxisValueLabel()
-                        .foregroundStyle(.white.opacity(0.6))
-                        .font(Font.custom("CallingCode-Regular", size: 12))
-                }
-            }
-            .chartXScale(domain: 0...xMax)
-            .chartYScale(domain: yAxisMin...yAxisMax)
-            .frame(height: 190)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 12)
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color.white.opacity(0.05))
-            )
-            .padding(.horizontal)
-            .onAppear {
-                print("📊 Cadence Chart - Data points: \(workout.cadenceData.count)")
-                print("📊 Cadence Range: \(minCadence) - \(maxCadence) SPM")
-                print("📊 Y-Axis: \(yAxisMin) - \(yAxisMax)")
-            }
-        }
+        CadenceChart(data: workout.cadenceData, duration: workout.duration)
     }
 
     // MARK: - Helper Functions
@@ -588,5 +508,209 @@ extension Color {
             blue: Double(b) / 255,
             opacity: Double(a) / 255
         )
+    }
+}
+
+// MARK: - Scrubbable charts
+
+/// Nearest point to `time` by relative time, or nil for an empty series.
+private func nearestPoint<Point>(
+    to time: Double?,
+    in points: [Point],
+    time relativeTime: (Point) -> Double
+) -> Point? {
+    guard let time, time.isFinite else { return nil }
+    return points.min { abs(relativeTime($0) - time) < abs(relativeTime($1) - time) }
+}
+
+private struct ScrubLabel: View {
+    let text: String
+
+    var body: some View {
+        Text(text)
+            .font(Font.custom("CallingCode-Regular", size: 12))
+            .foregroundStyle(.white)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 3)
+            .background(RoundedRectangle(cornerRadius: 6).fill(Color.black.opacity(0.65)))
+    }
+}
+
+/// Heart-rate line chart. Drag across it to read the nearest sample.
+private struct HeartRateChart: View {
+    let data: [HeartRateDataPoint]
+    let duration: TimeInterval
+    @State private var selectedTime: Double?
+
+    var body: some View {
+        let lastTime = data.map(\.relativeTime).max() ?? 0
+        let xMax = lastTime > 0 ? lastTime : max(duration, 1)
+        let values = data.map(\.heartRate)
+        let yMax = (ceil((values.max() ?? 0) / 10) * 10) + 10
+        let yMin = max(0, floor((values.min() ?? 0) / 10) * 10 - 10)
+        let selected = nearestPoint(to: selectedTime, in: data, time: \.relativeTime)
+
+        Chart {
+            ForEach(Array(data.enumerated()), id: \.offset) { _, point in
+                LineMark(
+                    x: .value("Time", point.relativeTime),
+                    y: .value("Heart Rate", point.heartRate)
+                )
+                .foregroundStyle(
+                    LinearGradient(
+                        gradient: Gradient(colors: [.red, .orange]),
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+                .lineStyle(StrokeStyle(lineWidth: 2))
+
+                AreaMark(
+                    x: .value("Time", point.relativeTime),
+                    yStart: .value("Baseline", yMin),
+                    yEnd: .value("Heart Rate", point.heartRate)
+                )
+                .foregroundStyle(
+                    LinearGradient(
+                        gradient: Gradient(colors: [
+                            Color.red.opacity(0.3),
+                            Color.orange.opacity(0.1)
+                        ]),
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+            }
+
+            if let selected {
+                RuleMark(x: .value("Selected", selected.relativeTime))
+                    .foregroundStyle(.white.opacity(0.7))
+                    .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
+                    .annotation(
+                        position: .top,
+                        spacing: 4,
+                        overflowResolution: .init(x: .fit(to: .chart), y: .disabled)
+                    ) {
+                        ScrubLabel(text: "\(formatTime(selected.relativeTime)) · \(Int(selected.heartRate.rounded())) bpm")
+                    }
+                PointMark(
+                    x: .value("Selected", selected.relativeTime),
+                    y: .value("Heart Rate", selected.heartRate)
+                )
+                .foregroundStyle(.white)
+                .symbolSize(40)
+            }
+        }
+        .chartXSelection(value: $selectedTime)
+        .chartXAxis {
+            AxisMarks(position: .bottom) { _ in
+                AxisGridLine().foregroundStyle(Color.white.opacity(0.1))
+                AxisTick().foregroundStyle(.clear)
+                AxisValueLabel()
+                    .foregroundStyle(.white.opacity(0.6))
+                    .font(Font.custom("CallingCode-Regular", size: 12))
+            }
+        }
+        .chartYAxis {
+            AxisMarks(position: .leading) { _ in
+                AxisGridLine().foregroundStyle(Color.white.opacity(0.1))
+                AxisValueLabel()
+                    .foregroundStyle(.white.opacity(0.6))
+                    .font(Font.custom("CallingCode-Regular", size: 12))
+            }
+        }
+        .chartXScale(domain: 0...xMax)
+        .chartYScale(domain: yMin...yMax)
+        .frame(height: 200)
+        .padding(.top, 24)
+        .padding(.horizontal)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color.white.opacity(0.05))
+        )
+        .padding(.horizontal)
+    }
+}
+
+/// Cadence line chart. Drag across it to read the nearest sample.
+private struct CadenceChart: View {
+    let data: [CadenceDataPoint]
+    let duration: TimeInterval
+    @State private var selectedTime: Double?
+
+    var body: some View {
+        let minCadence = data.map(\.cadence).min() ?? 0
+        let maxCadence = data.map(\.cadence).max() ?? 200
+        let yAxisMin = max(0, floor(minCadence / 10) * 10 - 10)
+        let yAxisMax = ceil(maxCadence / 10) * 10 + 10
+        let lastTime = data.map(\.relativeTime).max() ?? 0
+        let xMax = lastTime > 0 ? lastTime : max(duration, 1)
+        let selected = nearestPoint(to: selectedTime, in: data, time: \.relativeTime)
+
+        Chart {
+            ForEach(data, id: \.timestamp) { point in
+                LineMark(
+                    x: .value("Time", point.relativeTime),
+                    y: .value("Cadence", point.cadence)
+                )
+                .foregroundStyle(Color.blue)
+                .lineStyle(StrokeStyle(lineWidth: 3))
+
+                AreaMark(
+                    x: .value("Time", point.relativeTime),
+                    yStart: .value("Baseline", yAxisMin),
+                    yEnd: .value("Cadence", point.cadence)
+                )
+                .foregroundStyle(Color.blue.opacity(0.3))
+            }
+
+            if let selected {
+                RuleMark(x: .value("Selected", selected.relativeTime))
+                    .foregroundStyle(.white.opacity(0.7))
+                    .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
+                    .annotation(
+                        position: .top,
+                        spacing: 4,
+                        overflowResolution: .init(x: .fit(to: .chart), y: .disabled)
+                    ) {
+                        ScrubLabel(text: "\(formatTime(selected.relativeTime)) · \(Int(selected.cadence.rounded())) spm")
+                    }
+                PointMark(
+                    x: .value("Selected", selected.relativeTime),
+                    y: .value("Cadence", selected.cadence)
+                )
+                .foregroundStyle(.white)
+                .symbolSize(40)
+            }
+        }
+        .chartXSelection(value: $selectedTime)
+        .chartXAxis {
+            AxisMarks(position: .bottom) { _ in
+                AxisGridLine().foregroundStyle(Color.white.opacity(0.1))
+                AxisTick().foregroundStyle(.clear)
+                AxisValueLabel()
+                    .foregroundStyle(.white.opacity(0.6))
+                    .font(Font.custom("CallingCode-Regular", size: 12))
+            }
+        }
+        .chartYAxis {
+            AxisMarks(position: .leading) { _ in
+                AxisGridLine().foregroundStyle(Color.white.opacity(0.1))
+                AxisValueLabel()
+                    .foregroundStyle(.white.opacity(0.6))
+                    .font(Font.custom("CallingCode-Regular", size: 12))
+            }
+        }
+        .chartXScale(domain: 0...xMax)
+        .chartYScale(domain: yAxisMin...yAxisMax)
+        .frame(height: 190)
+        .padding(.horizontal, 14)
+        .padding(.top, 24)
+        .padding(.bottom, 12)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color.white.opacity(0.05))
+        )
+        .padding(.horizontal)
     }
 }
