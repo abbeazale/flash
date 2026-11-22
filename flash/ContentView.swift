@@ -29,7 +29,10 @@ struct ContentView: View {
                         })
                         .accessibilityLabel("Settings")
                         Spacer()
-                        Text("swipe to start a run")
+                        NavigationLink(destination: SavedRoutesView()) {
+                            Label("Routes", systemImage: "map")
+                        }
+                        .accessibilityIdentifier("home.routes")
                         Spacer()
                         HStack(spacing: 18) {
                             NavigationLink(destination: detailsView(), label: {
@@ -44,7 +47,7 @@ struct ContentView: View {
                         }
                         .padding(.trailing, 30)
                     }
-                    .opacity(0.30)
+                    .opacity(0.85)
                     .padding(.top, -10)
                     
                     WeeklySummery(stats: Stats(
