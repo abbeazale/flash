@@ -25,6 +25,7 @@ struct DetailedRun: View {
     @State private var isShowingShareConfirmation = false
     @State private var preparedShare: PreparedRunShare?
     @State private var sharingAlert: RunSharingAlert?
+    @State private var isSavingRoute = false
         
         init(workout: RunningData) {
             self.workout = workout
@@ -138,6 +139,14 @@ struct DetailedRun: View {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
                     Button {
+                        isSavingRoute = true
+                    } label: {
+                        Label("Save as route", systemImage: "map.fill")
+                    }
+                    .disabled(isLoadingDetails || !hasFinishedDetailHydration || displayedWorkout.route.count < 2)
+                    .accessibilityIdentifier("run.saveRoute")
+
+                    Button {
                         requestShare(.card)
                     } label: {
                         Label("Share Run Card", systemImage: "photo")
@@ -195,6 +204,12 @@ struct DetailedRun: View {
         }
         .sheet(item: $preparedShare) { preparedShare in
             PreparedRunShareView(preparedShare: preparedShare)
+        }
+        .sheet(isPresented: $isSavingRoute) {
+            SaveRunRouteSheet(
+                locations: displayedWorkout.route,
+                suggestedName: "Run on \(displayedWorkout.date.formatted(date: .abbreviated, time: .omitted))"
+            )
         }
         .alert(item: $sharingAlert) { alert in
             Alert(

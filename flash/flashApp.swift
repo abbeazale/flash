@@ -29,7 +29,8 @@ struct flashApp: App {
             RunnerProfile.self,
             PersonalRecord.self,
             AnalyticsBackfillState.self,
-            DailyLoad.self
+            DailyLoad.self,
+            SavedRoute.self
         ])
     }
 }
