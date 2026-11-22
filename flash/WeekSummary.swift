@@ -28,6 +28,23 @@ struct WeekRun: Equatable {
     let duration: TimeInterval
 }
 
+/// Distance and time for a week or for one day.
+struct WeekTotals: Equatable {
+    let kilometers: Double
+    let duration: TimeInterval
+
+    /// Minutes per kilometer. 0 when there is no distance.
+    var averagePace: Double {
+        kilometers > 0 ? duration / 60 / kilometers : 0
+    }
+
+    /// Time as h:mm:ss.
+    var formattedDuration: String {
+        let seconds = Int(duration)
+        return String(format: "%0d:%02d:%02d", seconds / 3_600, (seconds % 3_600) / 60, seconds % 60)
+    }
+}
+
 /// Totals and per-day distance for one Monday-to-Sunday week.
 struct WeekSummary: Codable, Equatable {
     let weekStart: Date
@@ -37,6 +54,8 @@ struct WeekSummary: Codable, Equatable {
     let averagePace: Double
     /// Kilometers ran on Monday through Sunday.
     let dailyKilometers: [Double]
+    /// Run time on Monday through Sunday.
+    let dailyDurations: [TimeInterval]
 
     static func empty(weekStart: Date) -> WeekSummary {
         WeekSummary(
@@ -44,7 +63,8 @@ struct WeekSummary: Codable, Equatable {
             totalKilometers: 0,
             totalDuration: 0,
             averagePace: 0,
-            dailyKilometers: Array(repeating: 0, count: 7)
+            dailyKilometers: Array(repeating: 0, count: 7),
+            dailyDurations: Array(repeating: 0, count: 7)
         )
     }
 
@@ -56,6 +76,7 @@ struct WeekSummary: Codable, Equatable {
         calendar: Calendar = .mondayFirst
     ) -> WeekSummary {
         var dailyKilometers = Array(repeating: 0.0, count: 7)
+        var dailyDurations = Array(repeating: 0.0, count: 7)
         var totalMeters = 0.0
         var totalDuration: TimeInterval = 0
 
@@ -67,6 +88,7 @@ struct WeekSummary: Codable, Equatable {
             ).day, (0..<7).contains(day) else { continue }
 
             dailyKilometers[day] += run.distanceMeters / 1_000
+            dailyDurations[day] += run.duration
             totalMeters += run.distanceMeters
             totalDuration += run.duration
         }
@@ -77,8 +99,23 @@ struct WeekSummary: Codable, Equatable {
             totalKilometers: totalKilometers,
             totalDuration: totalDuration,
             averagePace: totalKilometers > 0 ? totalDuration / 60 / totalKilometers : 0,
-            dailyKilometers: dailyKilometers
+            dailyKilometers: dailyKilometers,
+            dailyDurations: dailyDurations
         )
+    }
+
+    /// Totals for the whole week.
+    var totals: WeekTotals {
+        WeekTotals(kilometers: totalKilometers, duration: totalDuration)
+    }
+
+    /// Totals for one day. 0 is Monday, 6 is Sunday.
+    func totals(forDay index: Int) -> WeekTotals {
+        guard dailyKilometers.indices.contains(index),
+              dailyDurations.indices.contains(index) else {
+            return WeekTotals(kilometers: 0, duration: 0)
+        }
+        return WeekTotals(kilometers: dailyKilometers[index], duration: dailyDurations[index])
     }
 
     /// Monday through Sunday of this week.
@@ -92,10 +129,7 @@ struct WeekSummary: Codable, Equatable {
     }
 
     /// Total time as h:mm:ss.
-    var formattedDuration: String {
-        let seconds = Int(totalDuration)
-        return String(format: "%0d:%02d:%02d", seconds / 3_600, (seconds % 3_600) / 60, seconds % 60)
-    }
+    var formattedDuration: String { totals.formattedDuration }
 
     /// Number of whole weeks between the week of `earlier` and the week of `later`.
     static func weeksBetween(

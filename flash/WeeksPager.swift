@@ -11,6 +11,8 @@ struct WeeksPager: View {
     /// Weeks before the current week. 0 is this week.
     @State private var weeksAgo: Int? = 0
     @State private var pastWeeks: [Date: WeekSummary] = [:]
+    /// The day picked on the visible week's chart. 0 is Monday. nil shows the whole week.
+    @State private var selectedDay: Int?
 
     /// This week plus every week back to the week of the oldest run.
     private var weekCount: Int {
@@ -42,6 +44,8 @@ struct WeeksPager: View {
             // Rebuild when the week count arrives so the pager opens on this week.
             .id(count)
             .onChange(of: count) { weeksAgo = 0 }
+            // A selection belongs to one week, so drop it when the week changes.
+            .onChange(of: weeksAgo) { selectedDay = nil }
 
             navigation(count: count)
         }
@@ -60,9 +64,15 @@ struct WeeksPager: View {
         let loaded = ago == 0 ? manager.thisWeek : pastWeeks[start]
         let summary = loaded ?? .empty(weekStart: start)
 
+        let isVisible = ago == (weeksAgo ?? 0)
+        let daySelection = Binding<Int?>(
+            get: { isVisible ? selectedDay : nil },
+            set: { if isVisible { selectedDay = $0 } }
+        )
+
         VStack(spacing: 0) {
-            WeeklySummery(summary: summary)
-            ChartsView(summary: summary)
+            WeeklySummery(summary: summary, selectedDay: daySelection.wrappedValue)
+            ChartsView(summary: summary, selectedDay: daySelection)
         }
         .opacity(loaded == nil ? 0.4 : 1)
         .task(id: start) {

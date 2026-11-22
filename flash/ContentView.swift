@@ -95,4 +95,6 @@ extension Color {
     /// Shared app background. Used for screen backgrounds and the navigation bar
     /// so the top safe area blends in instead of showing a black strip on scroll.
     static let flashBackground = Color(red: 54 / 255, green: 46 / 255, blue: 64 / 255)
+    /// Marks the selected day on the home screen: its bar, label, and stats.
+    static let flashHighlight = Color(red: 255 / 255, green: 159 / 255, blue: 67 / 255)
 }

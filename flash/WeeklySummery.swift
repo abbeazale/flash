@@ -12,6 +12,8 @@ import SwiftUI
 
 struct WeeklySummery: View {
     let summary: WeekSummary
+    /// The selected day. 0 is Monday. nil shows the whole week.
+    var selectedDay: Int? = nil
     @Query private var profiles: [RunnerProfile]
 
     private var unitPresentation: RunUnitPresentation {
@@ -21,25 +23,39 @@ struct WeeklySummery: View {
         )
     }
 
+    private var totals: WeekTotals {
+        selectedDay.map { summary.totals(forDay: $0) } ?? summary.totals
+    }
+
+    /// "kilometers", or "kilometers · wed, nov 19" when a day is selected.
+    private var unitLabel: String {
+        let unit = unitPresentation.unit.title.lowercased()
+        let days = summary.days()
+        guard let selectedDay, days.indices.contains(selectedDay) else { return unit }
+        let day = days[selectedDay].formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day())
+        return "\(unit) · \(day.lowercased())"
+    }
+
     var body: some View {
             VStack{
                
                 Text(
-                    "\(unitPresentation.distance(fromMeters: summary.totalKilometers * 1_000), specifier: "%.2f")"
+                    "\(unitPresentation.distance(fromMeters: totals.kilometers * 1_000), specifier: "%.2f")"
                 )
                     .font(Font.custom("CallingCode-Regular", size: 96))
-                Text(unitPresentation.unit.title.lowercased())
+                    .contentTransition(.numericText())
+                Text(unitLabel)
                     .font(Font.custom("CallingCode-Regular", size: 16))
-                    .opacity(0.30)
+                    .opacity(selectedDay == nil ? 0.30 : 1)
                 VStack{
-                    Text(summary.formattedDuration)
+                    Text(totals.formattedDuration)
                         .frame(maxWidth: 300, alignment: .leading)
                     Text("time")
                         .frame(maxWidth: 300, alignment: .leading)
                     
                     Text(
                         unitPresentation.paceText(
-                            fromMinutesPerKilometer: summary.averagePace
+                            fromMinutesPerKilometer: totals.averagePace
                         )
                     )
                         .frame(maxWidth: 300, alignment: .leading)
@@ -50,7 +66,10 @@ struct WeeklySummery: View {
                 }.font(Font.custom("CallingCode-Regular", size: 18))
                     .padding(.top, 30)
                 
-            }.padding(.bottom, 100)
+            }
+            .foregroundStyle(selectedDay == nil ? Color.white : Color.flashHighlight)
+            .animation(.easeOut(duration: 0.15), value: selectedDay)
+            .padding(.bottom, 100)
         
     }
 }
