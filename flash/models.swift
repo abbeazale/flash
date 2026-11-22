@@ -90,12 +90,3 @@ struct RunningData: Identifiable, Hashable {
     let healthKitUUID: UUID? // HealthKit workout identifier for lazy detail hydration
 }
 
-
-struct Stats {
-    let id = UUID()
-    let totalKm: Double
-    let totalTime: String
-    let averagePace: Double
-    let formattPace: String
-
-}

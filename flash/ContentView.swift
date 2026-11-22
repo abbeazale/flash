@@ -47,14 +47,7 @@ struct ContentView: View {
                     .opacity(0.30)
                     .padding(.top, -10)
                     
-                    WeeklySummery(stats: Stats(
-                        totalKm: manager.weeklyRunDistance,
-                        totalTime: manager.formattedRunTime,
-                        averagePace: manager.weeklyRunPace,
-                        formattPace: manager.formattedRunPace
-                    ))
-                    
-                    ChartsView()
+                    WeeksPager()
                     
                     // Show subtle loading indicator if still loading
                     if manager.isLoading {
