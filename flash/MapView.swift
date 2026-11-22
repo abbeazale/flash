@@ -104,11 +104,15 @@ struct MapView: UIViewRepresentable {
             mapView.addOverlay(polyline, level: .aboveRoads)
             baseOverlay = polyline
 
-            mapView.setVisibleMapRect(
-                polyline.boundingMapRect,
-                edgePadding: UIEdgeInsets(top: 50, left: 50, bottom: 50, right: 50),
-                animated: true
-            )
+            // Fit after the current layout pass; a new map view can still have a zero frame.
+            DispatchQueue.main.async { [weak mapView, weak polyline] in
+                guard let mapView, let polyline else { return }
+                mapView.setVisibleMapRect(
+                    polyline.boundingMapRect,
+                    edgePadding: UIEdgeInsets(top: 50, left: 50, bottom: 50, right: 50),
+                    animated: false
+                )
+            }
         }
 
         func replaceHighlight(on mapView: MKMapView, route: [CLLocation], range: ClosedRange<Int>?) {

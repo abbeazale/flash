@@ -16,6 +16,10 @@ final class CachedRunSummary {
     /// backfill leaves it nil (avg HR needs a per-run query); a later pass
     /// (Plan 002 / Phase E) fills it in. Declared here so Phase E needs no schema migration.
     var avgHR: Double?
+    /// Algorithm version of the average-HR backfill that last processed this run.
+    var avgHRBackfillVersion: Int?
+    /// Algorithm version of the route best-effort backfill that last processed this run.
+    var routeRecordsBackfillVersion: Int?
 
     init(healthKitUUID: UUID, date: Date, distance: Double,
          duration: Double, calories: Double, elevationGain: Double, avgHR: Double? = nil) {
@@ -237,8 +241,9 @@ final class PersonalRecord {
     }
 }
 
-/// Versioned, resumable progress for a history-wide analytics backfill. The cursor is the
-/// `(date, uuid)` of the last run that was fully processed.
+/// Progress for a history-wide analytics backfill. Each processed run is marked on
+/// `CachedRunSummary`; this row holds the counts for the UI, the last processed run, and
+/// whether the first full pass has finished (`isComplete`), which controls "new PR" marking.
 @Model
 final class AnalyticsBackfillState {
     @Attribute(.unique) var key: String
@@ -267,9 +272,9 @@ final class AnalyticsBackfillState {
         self.isComplete = isComplete
     }
 
-    var cursor: BackfillCursor? {
-        guard let lastProcessedDate, let lastProcessedUUIDString else { return nil }
-        return BackfillCursor(date: lastProcessedDate, uuidString: lastProcessedUUIDString)
+    /// True while some cached runs have not been processed, including after a failed pass.
+    var hasPendingRuns: Bool {
+        processedCount < totalCount
     }
 
     func reset(algorithmVersion: Int) {

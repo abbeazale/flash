@@ -139,23 +139,34 @@ enum RouteAnalyzer {
 
     /// Splits in route order. A split closes at the first point where its accumulated
     /// distance reaches `segmentDistanceMeters`; the rest becomes a final partial split.
-    /// Index ranges refer to positions in `route` as passed in.
+    /// Uses the same point filter as `normalized`: points with invalid coordinates, or whose
+    /// timestamp does not advance, are skipped. Index ranges refer to positions in `route`.
     static func splits(route: [CLLocation], segmentDistanceMeters: Double) -> [RouteSplit] {
-        guard segmentDistanceMeters.isFinite, segmentDistanceMeters > 0,
-              route.count > 1 else { return [] }
+        guard segmentDistanceMeters.isFinite, segmentDistanceMeters > 0 else { return [] }
 
         var splits: [RouteSplit] = []
+        var lastIndex: Int?
         var startIndex = 0
         var segmentDistance = 0.0
         var segmentTime: TimeInterval = 0
 
-        for index in 1..<route.count {
-            let previous = route[index - 1]
-            let current = route[index]
-            let step = current.distance(from: previous)
-            let elapsed = current.timestamp.timeIntervalSince(previous.timestamp)
-            if step.isFinite { segmentDistance += step }
-            if elapsed.isFinite, elapsed > 0 { segmentTime += elapsed }
+        for (index, point) in route.enumerated() {
+            let coordinate = point.coordinate
+            guard coordinate.latitude.isFinite, coordinate.longitude.isFinite,
+                  CLLocationCoordinate2DIsValid(coordinate) else { continue }
+            guard let previousIndex = lastIndex else {
+                lastIndex = index
+                startIndex = index
+                continue
+            }
+            let previous = route[previousIndex]
+            let elapsed = point.timestamp.timeIntervalSince(previous.timestamp)
+            let step = point.distance(from: previous)
+            guard elapsed > 0, step.isFinite else { continue }
+
+            segmentDistance += step
+            segmentTime += elapsed
+            lastIndex = index
 
             if segmentDistance >= segmentDistanceMeters {
                 splits.append(RouteSplit(
@@ -170,45 +181,33 @@ enum RouteAnalyzer {
             }
         }
 
-        if segmentDistance > 0 {
+        if segmentDistance > 0, let lastIndex {
             splits.append(RouteSplit(
                 number: splits.count + 1,
                 distance: segmentDistance,
                 duration: segmentTime,
-                indexRange: startIndex...(route.count - 1)
+                indexRange: startIndex...lastIndex
             ))
         }
         return splits
     }
 }
 
-// MARK: - Backfill cursor
+// MARK: - Backfill order
 
-/// Position of the last fully processed run, ordered by `(date, uuidString)`.
-struct BackfillCursor: Equatable {
-    let date: Date
-    let uuidString: String
-
-    /// True when `(date, uuidString)` sorts strictly after this cursor.
-    func precedes(date otherDate: Date, uuidString otherUUID: String) -> Bool {
-        if otherDate != date { return otherDate > date }
-        return otherUUID > uuidString
-    }
-
-    /// Items sorted by `(date, uuidString)` and kept only when strictly after `cursor`.
+enum BackfillOrder {
+    /// Items not yet done, oldest first, ties broken by UUID string.
     static func pending<T>(
         _ items: [T],
-        after cursor: BackfillCursor?,
+        isDone: (T) -> Bool,
         date: (T) -> Date,
         uuidString: (T) -> String
     ) -> [T] {
-        let sorted = items.sorted { lhs, rhs in
+        items.filter { !isDone($0) }.sorted { lhs, rhs in
             let lhsDate = date(lhs)
             let rhsDate = date(rhs)
             if lhsDate != rhsDate { return lhsDate < rhsDate }
             return uuidString(lhs) < uuidString(rhs)
         }
-        guard let cursor else { return sorted }
-        return sorted.filter { cursor.precedes(date: date($0), uuidString: uuidString($0)) }
     }
 }

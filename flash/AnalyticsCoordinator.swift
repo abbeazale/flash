@@ -12,8 +12,8 @@ enum AnalyticsBackfillKey {
 }
 
 /// Runs the history-wide analytics backfills after history sync: average HR for training
-/// load, then route-based best efforts. Each backfill handles one run at a time and saves its
-/// cursor after each run, so a killed app resumes after the last finished run.
+/// load, then route-based best efforts. Each backfill handles one run at a time and marks the
+/// run as processed in the same save, so a killed app resumes with the next unmarked run.
 ///
 /// All SwiftData work stays on the main actor. HealthKit reads suspend; they do not block it.
 @MainActor
@@ -41,6 +41,7 @@ final class AnalyticsCoordinator {
             try await backfill(
                 key: AnalyticsBackfillKey.averageHeartRate,
                 version: AnalyticsBackfillKey.averageHeartRateVersion,
+                marker: \.avgHRBackfillVersion,
                 onReset: {},
                 process: { [reader] row, _ in
                     guard row.avgHR == nil else { return }
@@ -67,6 +68,7 @@ final class AnalyticsCoordinator {
             try await backfill(
                 key: AnalyticsBackfillKey.routeRecords,
                 version: AnalyticsBackfillKey.routeRecordsVersion,
+                marker: \.routeRecordsBackfillVersion,
                 onReset: { try recordStore.deleteBestEffortRecords() },
                 process: { [reader] row, markNew in
                     let uuid = row.healthKitUUID
@@ -89,26 +91,29 @@ final class AnalyticsCoordinator {
 
     // MARK: - Backfill loop
 
-    /// Processes cached runs strictly after the saved cursor, oldest first. The cursor moves
-    /// only after `process` succeeds, in the same save as the changes `process` made. An error
-    /// rolls back the unsaved changes and stops the loop without moving the cursor.
+    /// Processes every cached run whose `marker` is not the current `version`, oldest first.
+    /// A run is marked only after `process` succeeds, in the same save as the changes
+    /// `process` made. An error rolls back the unsaved changes and stops the loop; the run
+    /// stays unmarked and is retried on the next launch.
     private func backfill(
         key: String,
         version: Int,
+        marker: ReferenceWritableKeyPath<CachedRunSummary, Int?>,
         onReset: () throws -> Void,
         process: (CachedRunSummary, _ markNew: Bool) async throws -> Void,
         afterEach: (Int) throws -> Void
     ) async throws {
         let state = try backfillState(key: key, version: version, onReset: onReset)
         let rows = try context.fetch(FetchDescriptor<CachedRunSummary>())
-        let pending = BackfillCursor.pending(
+        let pending = BackfillOrder.pending(
             rows,
-            after: state.cursor,
+            isDone: { $0[keyPath: marker] == version },
             date: { $0.date },
             uuidString: { $0.healthKitUUID.uuidString }
         )
 
-        state.totalCount = state.processedCount + pending.count
+        state.totalCount = rows.count
+        state.processedCount = rows.count - pending.count
         guard !pending.isEmpty else {
             state.isComplete = true
             try saveIfNeeded()
@@ -122,15 +127,13 @@ final class AnalyticsCoordinator {
 
         for row in pending {
             if Task.isCancelled { return }
+            guard row[keyPath: marker] != version else { continue }
             let date = row.date
             let uuidString = row.healthKitUUID.uuidString
-            if let cursor = state.cursor,
-               !cursor.precedes(date: date, uuidString: uuidString) {
-                continue
-            }
 
             do {
                 try await process(row, markNew)
+                row[keyPath: marker] = version
                 state.lastProcessedDate = date
                 state.lastProcessedUUIDString = uuidString
                 state.processedCount += 1

@@ -4,7 +4,6 @@ import SwiftUI
 
 private struct TrainingLoadInputSignature: Equatable {
     let runCount: Int
-    let heartRateCount: Int
     let latestRun: Date?
     let maxHR: Int?
     let restingHR: Int?
@@ -48,8 +47,9 @@ struct TrainingLoadView: View {
 
     private var inputSignature: TrainingLoadInputSignature {
         TrainingLoadInputSignature(
+            // Heart-rate backfill progress is not part of this: the coordinator recomputes
+            // in batches while it runs.
             runCount: cachedRuns.count,
-            heartRateCount: cachedRuns.filter { $0.avgHR != nil }.count,
             latestRun: cachedRuns.last?.date,
             maxHR: profile?.maxHR,
             restingHR: profile?.restingHR,
@@ -211,7 +211,7 @@ struct TrainingLoadView: View {
             if estimated > 0 {
                 Text(estimatedText(count: estimated))
             }
-            if let state = heartRateBackfillStates.first, !state.isComplete, state.totalCount > 0 {
+            if let state = heartRateBackfillStates.first, state.hasPendingRuns {
                 Text("Reading heart rate: \(state.processedCount)/\(state.totalCount) runs")
             }
             Text("Fitness is a 42-day weighted average of daily load, fatigue a 7-day one, and form is fitness minus fatigue. Fresh: form above 5. Fatigued: below -10.")

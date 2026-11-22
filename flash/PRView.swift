@@ -163,7 +163,7 @@ struct PRView: View {
                 Text("Best efforts")
                     .font(Font.custom("CallingCode-Regular", size: 24))
                 Spacer()
-                if let state = routeBackfill, !state.isComplete, state.totalCount > 0 {
+                if let state = routeBackfill, state.hasPendingRuns {
                     Text("\(state.processedCount)/\(state.totalCount) runs")
                         .font(Font.custom("CallingCode-Regular", size: 12))
                         .foregroundStyle(.white.opacity(0.6))
@@ -211,7 +211,7 @@ struct PRView: View {
 
     private var missingBestEffortText: String {
         if cachedRuns.isEmpty { return "No runs yet" }
-        guard let state = routeBackfill, state.isComplete else { return "computing…" }
+        guard let state = routeBackfill, !state.hasPendingRuns else { return "computing…" }
         return "no route result"
     }
 
