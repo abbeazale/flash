@@ -17,6 +17,10 @@ struct statsView: View {
     @State private var cachedElevationSegments: [Double] = []
     @State private var selectedSplit: Int?
 
+    // Fits "10" and "10:59/km" on one line in CallingCode at 18 pt.
+    private static let splitNumberWidth: CGFloat = 28
+    private static let splitPaceWidth: CGFloat = 100
+
     private var unitPresentation: RunUnitPresentation {
         RunUnitPresentation(
             unit: profiles.first { $0.key == RunnerProfile.singletonKey }?.distanceUnit
@@ -68,10 +72,10 @@ struct statsView: View {
                 }
                 HStack(spacing: 8) {
                     Text(unitPresentation.distanceLabel)
-                        .frame(width: 20, alignment: .leading)
+                        .frame(width: Self.splitNumberWidth, alignment: .leading)
 
                     Text("Pace")
-                        .frame(width: 60, alignment: .leading)
+                        .frame(width: Self.splitPaceWidth, alignment: .leading)
 
                     Spacer()
                 }
@@ -83,9 +87,7 @@ struct statsView: View {
                     HStack(spacing: 8) {
                         Text("\(segment.kilometer)")
                             .font(Font.custom("CallingCode-Regular", size: 18))
-                            .frame(width: 20, alignment: .leading)
-
-
+                            .frame(width: Self.splitNumberWidth, alignment: .leading)
 
                         Text(
                             unitPresentation.paceText(
@@ -93,7 +95,9 @@ struct statsView: View {
                             )
                         )
                             .font(Font.custom("CallingCode-Regular", size: 18))
-                            .frame(width: 60, alignment: .leading)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                            .frame(width: Self.splitPaceWidth, alignment: .leading)
 
                         Rectangle()
                             .fill(Color.blue)
@@ -425,7 +429,7 @@ extension statsView {
     // MARK: - Helper Functions
     private func barWidth(for pace: Double, among splits: [SegmentPace]) -> CGFloat {
         let maxPace = splits.map(\.pace).max() ?? 1
-        let maxWidth: CGFloat = 200 // Fixed width for bars
+        let maxWidth: CGFloat = 160 // Fixed width for bars; leaves room for the pace column
 
         return CGFloat((pace / maxPace) * Double(maxWidth))
     }
