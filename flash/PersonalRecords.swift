@@ -7,6 +7,13 @@ enum PersonalRecordKey {
     static let elevation = "whole.elevation"
 
     static let wholeRunKeys = [longest, fastest, elevation]
+
+    /// Best-effort key for a standard distance, e.g. `distance.5000`. Value is elapsed seconds.
+    static func distance(_ meters: Double) -> String {
+        "distance.\(Int(meters.rounded()))"
+    }
+
+    static let distancePrefix = "distance."
 }
 
 struct PersonalRecordInput {
@@ -187,5 +194,75 @@ final class PersonalRecordStore {
         }
 
         try context.save()
+    }
+
+    /// Merges one run's best efforts into the stored records. Does not save; the caller saves
+    /// together with the backfill cursor so both change in one transaction.
+    /// - Parameter markNew: false during the initial history backfill, so old runs do not
+    ///   appear as new PRs.
+    func mergeBestEfforts(
+        _ efforts: [Double: TimeInterval],
+        runUUID: UUID,
+        date: Date,
+        markNew: Bool,
+        now: Date = Date()
+    ) throws {
+        guard !efforts.isEmpty else { return }
+        let existingRecords = try context.fetch(FetchDescriptor<PersonalRecord>())
+        var existingByKey = Dictionary(
+            existingRecords.map { ($0.key, $0) },
+            uniquingKeysWith: { first, _ in first }
+        )
+
+        for (meters, seconds) in efforts {
+            guard seconds.isFinite, seconds > 0 else { continue }
+            let candidate = PersonalRecordCandidate(
+                key: PersonalRecordKey.distance(meters),
+                value: seconds,
+                runUUID: runUUID,
+                date: date
+            )
+
+            guard let record = existingByKey[candidate.key] else {
+                let record = PersonalRecord(
+                    key: candidate.key,
+                    value: candidate.value,
+                    runUUID: candidate.runUUID,
+                    date: candidate.date,
+                    computedAt: now,
+                    isNew: markNew
+                )
+                context.insert(record)
+                existingByKey[candidate.key] = record
+                continue
+            }
+
+            let existing = PersonalRecordCandidate(
+                key: record.key,
+                value: record.value,
+                runUUID: record.runUUID,
+                date: record.date
+            )
+            guard PersonalRecordEngine.isBetter(candidate, than: existing) else { continue }
+
+            let improved = PersonalRecordEngine.isMetricImprovement(
+                key: candidate.key,
+                newValue: candidate.value,
+                oldValue: existing.value
+            )
+            record.value = candidate.value
+            record.runUUID = candidate.runUUID
+            record.date = candidate.date
+            record.computedAt = now
+            record.isNew = markNew && improved
+        }
+    }
+
+    /// Removes all standard-distance records, used when the route algorithm version changes.
+    func deleteBestEffortRecords() throws {
+        let records = try context.fetch(FetchDescriptor<PersonalRecord>())
+        for record in records where record.key.hasPrefix(PersonalRecordKey.distancePrefix) {
+            context.delete(record)
+        }
     }
 }

@@ -24,7 +24,13 @@ struct flashApp: App {
             ContentView()
                 .environmentObject(manager)
         }
-        .modelContainer(for: [CachedRunSummary.self, RunnerProfile.self, PersonalRecord.self])
+        .modelContainer(for: [
+            CachedRunSummary.self,
+            RunnerProfile.self,
+            PersonalRecord.self,
+            AnalyticsBackfillState.self,
+            DailyLoad.self
+        ])
     }
 }
 

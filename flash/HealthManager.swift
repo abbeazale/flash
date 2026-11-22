@@ -352,49 +352,14 @@ class HealthManager: ObservableObject {
         route: [CLLocation],
         segmentDistanceMeters: Double
     ) -> [SegmentPace] {
-        guard segmentDistanceMeters.isFinite, segmentDistanceMeters > 0 else { return [] }
-        guard !route.isEmpty else { return [] }
-
-        var segmentPaces: [SegmentPace] = []
-        var currentSegment = 1
-        var segmentDistance: Double = 0.0
-        var segmentTime: TimeInterval = 0.0
-        var lastLocation = route.first!
-
-        for location in route.dropFirst() {
-            let distance = location.distance(from: lastLocation)
-            segmentDistance += distance
-            segmentTime += location.timestamp.timeIntervalSince(lastLocation.timestamp)
-
-            if segmentDistance >= segmentDistanceMeters {
-                let pace = segmentTime / 60 / (segmentDistance / 1000)
-                let formattedPace = formatPace(pace)
-                let segmentPace = SegmentPace(
-                    kilometer: currentSegment,
-                    pace: pace,
-                    formattedPace: formattedPace
-                )
-                segmentPaces.append(segmentPace)
-                currentSegment += 1
-                segmentDistance = 0.0
-                segmentTime = 0.0
-            }
-
-            lastLocation = location
-        }
-
-        if segmentDistance > 0 {
-            let pace = segmentTime / 60.0 / (segmentDistance / 1000)
-            let formattedPace = formatPace(pace)
-            let segmentPace = SegmentPace(
-                kilometer: currentSegment,
-                pace: pace,
-                formattedPace: formattedPace
+        // RouteAnalyzer owns split boundaries so the map highlights the same points.
+        RouteAnalyzer.splits(route: route, segmentDistanceMeters: segmentDistanceMeters).map {
+            SegmentPace(
+                kilometer: $0.number,
+                pace: $0.paceMinutesPerKilometer,
+                formattedPace: formatPace($0.paceMinutesPerKilometer)
             )
-            segmentPaces.append(segmentPace)
         }
-
-        return segmentPaces
     }
 
     // Fetch heart rate data points over time during the workout
@@ -505,7 +470,7 @@ class HealthManager: ObservableObject {
                     while cursor < sampleEnd {
                         let windowEnd = windowStart.addingTimeInterval(timeWindow)
 
-                        if cursor >= windowEnd {
+                        if !(cursor < windowEnd) { // Not `<=`/`>=`: those Date operators are weak-linked and crash on iOS 27.2 beta.
                             flushWindow()
                             continue
                         }
@@ -521,7 +486,7 @@ class HealthManager: ObservableObject {
                         durationInWindow += overlapDuration
                         cursor = overlapEnd
 
-                        if cursor >= windowEnd {
+                        if !(cursor < windowEnd) { // Not `<=`/`>=`: those Date operators are weak-linked and crash on iOS 27.2 beta.
                             flushWindow()
                         }
                     }
@@ -661,7 +626,11 @@ class HealthManager: ObservableObject {
                     }
 
                     group.notify(queue: .main) {
-                        continuation.resume(returning: threadSafeLocations)
+                        // Route samples load concurrently; restore time order so splits and
+                        // map highlights follow the run.
+                        continuation.resume(
+                            returning: threadSafeLocations.sorted { $0.timestamp < $1.timestamp }
+                        )
                     }
                 } else {
                     continuation.resume(returning: [])

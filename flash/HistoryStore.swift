@@ -37,7 +37,8 @@ enum RunAggregator {
     }
 
     static func totals(_ runs: [RunSummaryData], in interval: DateInterval) -> RunTotals {
-        totals(runs.filter { $0.date >= interval.start && $0.date < interval.end })
+        // Not `<=`/`>=`: those Date operators are weak-linked and crash on iOS 27.2 beta.
+        totals(runs.filter { !($0.date < interval.start) && $0.date < interval.end })
     }
 
     /// 12 ordered buckets (month 1...12) for the given year; empty months are zeroed.

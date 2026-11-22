@@ -127,7 +127,7 @@ struct SettingsView: View {
                     }
 
                     settingsCard(title: "Training load") {
-                        Text("Used later to calculate personalized training load.")
+                        Text("Used for heart-rate-based training load. Not set uses run duration only.")
                             .font(Font.custom("CallingCode-Regular", size: 13))
                             .foregroundStyle(.white.opacity(0.6))
 

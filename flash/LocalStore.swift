@@ -16,6 +16,10 @@ final class CachedRunSummary {
     /// backfill leaves it nil (avg HR needs a per-run query); a later pass
     /// (Plan 002 / Phase E) fills it in. Declared here so Phase E needs no schema migration.
     var avgHR: Double?
+    /// Algorithm version of the average-HR backfill that last processed this run.
+    var avgHRBackfillVersion: Int?
+    /// Algorithm version of the route best-effort backfill that last processed this run.
+    var routeRecordsBackfillVersion: Int?
 
     init(healthKitUUID: UUID, date: Date, distance: Double,
          duration: Double, calories: Double, elevationGain: Double, avgHR: Double? = nil) {
@@ -200,7 +204,7 @@ final class RunnerProfile {
             return maxHR
         }
         if let birthdate,
-           birthdate <= date,
+           !(date < birthdate), // Not `<=`/`>=`: those Date operators are weak-linked and crash on iOS 27.2 beta.
            let age = calendar.dateComponents([.year], from: birthdate, to: date).year {
             let ageBasedMax = 220 - age
             if ageBasedMax > 0 {
@@ -234,5 +238,71 @@ final class PersonalRecord {
         self.date = date
         self.computedAt = computedAt
         self.isNew = isNew
+    }
+}
+
+/// Progress for a history-wide analytics backfill. Each processed run is marked on
+/// `CachedRunSummary`; this row holds the counts for the UI, the last processed run, and
+/// whether the first full pass has finished (`isComplete`), which controls "new PR" marking.
+@Model
+final class AnalyticsBackfillState {
+    @Attribute(.unique) var key: String
+    var algorithmVersion: Int
+    var lastProcessedDate: Date?
+    var lastProcessedUUIDString: String?
+    var processedCount: Int
+    var totalCount: Int
+    var isComplete: Bool
+
+    init(
+        key: String,
+        algorithmVersion: Int,
+        lastProcessedDate: Date? = nil,
+        lastProcessedUUIDString: String? = nil,
+        processedCount: Int = 0,
+        totalCount: Int = 0,
+        isComplete: Bool = false
+    ) {
+        self.key = key
+        self.algorithmVersion = algorithmVersion
+        self.lastProcessedDate = lastProcessedDate
+        self.lastProcessedUUIDString = lastProcessedUUIDString
+        self.processedCount = processedCount
+        self.totalCount = totalCount
+        self.isComplete = isComplete
+    }
+
+    /// True while some cached runs have not been processed, including after a failed pass.
+    var hasPendingRuns: Bool {
+        processedCount < totalCount
+    }
+
+    func reset(algorithmVersion: Int) {
+        self.algorithmVersion = algorithmVersion
+        lastProcessedDate = nil
+        lastProcessedUUIDString = nil
+        processedCount = 0
+        totalCount = 0
+        isComplete = false
+    }
+}
+
+/// One calendar day of training load. Rebuilt from cached runs and the runner profile.
+@Model
+final class DailyLoad {
+    @Attribute(.unique) var day: Date
+    var load: Double
+    var ctl: Double
+    var atl: Double
+    var form: Double
+    var isEstimated: Bool
+
+    init(day: Date, load: Double, ctl: Double, atl: Double, form: Double, isEstimated: Bool) {
+        self.day = day
+        self.load = load
+        self.ctl = ctl
+        self.atl = atl
+        self.form = form
+        self.isEstimated = isEstimated
     }
 }

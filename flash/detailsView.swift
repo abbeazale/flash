@@ -72,6 +72,17 @@ struct detailsView: View {
                     }
 
                     NavigationLink {
+                        TrainingLoadView()
+                    } label: {
+                        Text("Training Load")
+                            .font(Font.custom("CallingCode-Regular", size: 24))
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.gray.opacity(0.2))
+                            .cornerRadius(8)
+                    }
+
+                    NavigationLink {
                         TrendsView()
                     } label: {
                         Text("Trends")

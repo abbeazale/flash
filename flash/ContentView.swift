@@ -87,6 +87,9 @@ struct ContentView: View {
                         "History sync failed: \(error.localizedDescription, privacy: .public)"
                     )
                 }
+
+                // Uses whatever history is cached, even if this launch's sync failed.
+                await AnalyticsCoordinator(context: modelContext).run()
             }
         }
     }
