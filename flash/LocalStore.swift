@@ -236,3 +236,68 @@ final class PersonalRecord {
         self.isNew = isNew
     }
 }
+
+/// Versioned, resumable progress for a history-wide analytics backfill. The cursor is the
+/// `(date, uuid)` of the last run that was fully processed.
+@Model
+final class AnalyticsBackfillState {
+    @Attribute(.unique) var key: String
+    var algorithmVersion: Int
+    var lastProcessedDate: Date?
+    var lastProcessedUUIDString: String?
+    var processedCount: Int
+    var totalCount: Int
+    var isComplete: Bool
+
+    init(
+        key: String,
+        algorithmVersion: Int,
+        lastProcessedDate: Date? = nil,
+        lastProcessedUUIDString: String? = nil,
+        processedCount: Int = 0,
+        totalCount: Int = 0,
+        isComplete: Bool = false
+    ) {
+        self.key = key
+        self.algorithmVersion = algorithmVersion
+        self.lastProcessedDate = lastProcessedDate
+        self.lastProcessedUUIDString = lastProcessedUUIDString
+        self.processedCount = processedCount
+        self.totalCount = totalCount
+        self.isComplete = isComplete
+    }
+
+    var cursor: BackfillCursor? {
+        guard let lastProcessedDate, let lastProcessedUUIDString else { return nil }
+        return BackfillCursor(date: lastProcessedDate, uuidString: lastProcessedUUIDString)
+    }
+
+    func reset(algorithmVersion: Int) {
+        self.algorithmVersion = algorithmVersion
+        lastProcessedDate = nil
+        lastProcessedUUIDString = nil
+        processedCount = 0
+        totalCount = 0
+        isComplete = false
+    }
+}
+
+/// One calendar day of training load. Rebuilt from cached runs and the runner profile.
+@Model
+final class DailyLoad {
+    @Attribute(.unique) var day: Date
+    var load: Double
+    var ctl: Double
+    var atl: Double
+    var form: Double
+    var isEstimated: Bool
+
+    init(day: Date, load: Double, ctl: Double, atl: Double, form: Double, isEstimated: Bool) {
+        self.day = day
+        self.load = load
+        self.ctl = ctl
+        self.atl = atl
+        self.form = form
+        self.isEstimated = isEstimated
+    }
+}
