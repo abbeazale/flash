@@ -8,23 +8,46 @@
 import SwiftUI
 
 struct RunListPage: View {
-    @Environment(\.dismiss) private var dismiss
     let title: String
     let runs: [RunningData]
     let metric: (RunningData) -> String
 
     var body: some View {
-        List(runs) { run in
-            NavigationLink(value: run) { 
-                HStack {
-                    Text(run.date.formatted(.dateTime.day().month().weekday()))
-                        .font(.custom("CallingCode-Regular", size: 16))
-                    Spacer()
-                    Text(metric(run))
-                        .font(.custom("CallingCode-Regular", size: 16))
+        ZStack {
+            Color.flashBackground
+                .ignoresSafeArea()
+
+            if runs.isEmpty {
+                Text("No runs yet")
+                    .font(Font.custom("CallingCode-Regular", size: 16))
+                    .foregroundStyle(.white.opacity(0.6))
+            } else {
+                ScrollView(.vertical) {
+                    LazyVStack {
+                        // RunningData.id is a fresh UUID per adapter call; key rows by the HealthKit workout
+                        ForEach(runs, id: \.healthKitUUID) { run in
+                            NavigationLink(destination: DetailedRun(workout: run)) {
+                                HStack {
+                                    Text(run.date.formatted(.dateTime
+                                        .day(.defaultDigits)
+                                        .month(.wide)
+                                        .weekday(.wide)
+                                        .year()))
+                                    .font(.headline)
+                                    Text(metric(run))
+                                        .font(.subheadline)
+                                }
+                                .padding()
+                                .background(Color.gray.opacity(0.2))
+                                .cornerRadius(8)
+                            }
+                        }
+                    }
+                    .padding(.vertical)
                 }
             }
         }
+        .foregroundColor(.white)
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(Color.flashBackground, for: .navigationBar)
