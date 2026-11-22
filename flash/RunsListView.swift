@@ -24,7 +24,8 @@ struct RunListPage: View {
             } else {
                 ScrollView(.vertical) {
                     LazyVStack {
-                        ForEach(runs) { run in
+                        // RunningData.id is a fresh UUID per adapter call; key rows by the HealthKit workout
+                        ForEach(runs, id: \.healthKitUUID) { run in
                             NavigationLink(destination: DetailedRun(workout: run)) {
                                 HStack {
                                     Text(run.date.formatted(.dateTime
