@@ -204,7 +204,7 @@ final class RunnerProfile {
             return maxHR
         }
         if let birthdate,
-           birthdate <= date,
+           !(date < birthdate), // Not `<=`/`>=`: those Date operators are weak-linked and crash on iOS 27.2 beta.
            let age = calendar.dateComponents([.year], from: birthdate, to: date).year {
             let ageBasedMax = 220 - age
             if ageBasedMax > 0 {

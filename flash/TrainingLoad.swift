@@ -112,7 +112,8 @@ enum TrainingLoadEngine {
         var atl = 0.0
         var points: [DailyLoadPoint] = []
 
-        while day <= endDay {
+        // Not `<=`/`>=`: those Date operators are weak-linked and crash on iOS 27.2 beta.
+        while !(endDay < day) {
             let load = loadByDay[day] ?? 0
             ctl += (load - ctl) / fitnessDays
             atl += (load - atl) / fatigueDays

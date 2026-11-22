@@ -470,7 +470,7 @@ class HealthManager: ObservableObject {
                     while cursor < sampleEnd {
                         let windowEnd = windowStart.addingTimeInterval(timeWindow)
 
-                        if cursor >= windowEnd {
+                        if !(cursor < windowEnd) { // Not `<=`/`>=`: those Date operators are weak-linked and crash on iOS 27.2 beta.
                             flushWindow()
                             continue
                         }
@@ -486,7 +486,7 @@ class HealthManager: ObservableObject {
                         durationInWindow += overlapDuration
                         cursor = overlapEnd
 
-                        if cursor >= windowEnd {
+                        if !(cursor < windowEnd) { // Not `<=`/`>=`: those Date operators are weak-linked and crash on iOS 27.2 beta.
                             flushWindow()
                         }
                     }
